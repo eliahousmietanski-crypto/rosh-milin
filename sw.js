@@ -1,4 +1,4 @@
-const V='rosh-milin-v3';
+const V='rosh-milin-v4';
 const CORE=['./','index.html','data.json','manifest.webmanifest','icon-192.png','icon-512.png'];
 const PAGES=[
   'pages/001.jpg',
