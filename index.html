@@ -219,7 +219,7 @@ details.more[open]>summary{margin-bottom:10px}
     <div class="brand">
       <span class="crowns" aria-hidden="true"><i></i><i></i><i></i></span>
       <span class="he" lang="he">ראש מילין</span>
-      <small>Chaque mot lu à travers ses lettres, selon le Rav Kook</small>
+      <small>Ce que disent les lettres d'un mot, selon le Rav Kook</small>
     </div>
     <div class="net" id="net"><b></b><span>En ligne</span></div>
   </header>
@@ -275,7 +275,7 @@ const HATAF={'ֱ':'חֲטַף סֶגּוֹל','ֲ':'חֲטַף פַּתַּח','
 const HATAF_FR={'ֱ':'au trésor propre','ֲ':'à l\'ouverture','ֳ':'au caché'};
 const TAAM={'֑':'מנח אתנחתא','֒':'מנח סגול','֓':'שלשלת','֔':'זקף קטן','֕':'זקף גדול','֖':'טפחא','֗':'מנח מנח רביעי','֘':'מנח זרקא','֮':'מנח זרקא','֙':'פשטא','֚':'יתיב','֛':'תביר','֜':'אזלא גרש','֝':'אזלא גרש','֞':'גרשים','֟':'קרני פרה','֠':'תלישא גדולה','֡':'פזר','֣':'מנח סגול','֤':'מהפך פשטא','֥':'מרכא','֦':'מרכא כפולה','֧':'דרגא','֨':'קדמא','֩':'תלישא קטנה','֪':'ירח בן יומו','ֽ':'סוף פסוק'};
 const TAAM_NAME={'֑':'אתנחתא','֒':'סגול','֓':'שלשלת','֔':'זקף קטן','֕':'זקף גדול','֖':'טפחא','֗':'רביעי','֘':'זרקא','֮':'זרקא','֙':'פשטא','֚':'יתיב','֛':'תביר','֜':'גרש','֝':'גרש','֞':'גרשים','֟':'קרני פרה','֠':'תלישא גדולה','֡':'פזר','֣':'מונח','֤':'מהפך','֥':'מרכא','֦':'מרכא כפולה','֧':'דרגא','֨':'קדמא','֩':'תלישא קטנה','֪':'ירח בן יומו','ֽ':'סילוק'};
-const KIND_FR={letter:'Lettre',final:'Lettre finale',tag:'Couronnes',nekuda:'Voyelle',taam:'Cantillation'};
+const KIND_FR={letter:'Lettre',final:'Lettre de fin de mot',tag:'Couronnes',nekuda:'Voyelle',taam:'Signe de chant'};
 
 /* ---------- données ---------- */
 async function load(){
@@ -335,8 +335,8 @@ function card(e,{sub=false,pos='',extraNote='',glyph=''}={}){
   const id='c'+Math.random().toString(36).slice(2,8);
   const g=glyph||(e.kind==='letter'||e.kind==='final'?e.id:(e.kind==='tag'?(e.id.startsWith('תג-')?e.id.slice(3):'תג'):''));
   const btns=[];
-  if(e.brk) btns.push(`<button data-c="${id}" data-w="brk" aria-expanded="false">Texte court</button>`);
-  if(e.main) btns.push(`<button data-c="${id}" data-w="main" aria-expanded="false">Texte complet</button>`);
+  if(e.brk) btns.push(`<button data-c="${id}" data-w="brk" aria-expanded="false">Le texte du livre (court)</button>`);
+  if(e.main) btns.push(`<button data-c="${id}" data-w="main" aria-expanded="false">Le texte du livre (long)</button>`);
   const pdf=(e.main||e.brk).pdf[0];
   btns.push(`<button data-page="${pdf}">Voir la page</button>`);
   return `<article class="card k-${e.kind}${sub?' sub':''}" id="${id}" data-e="${esc(e.id)}">
@@ -346,9 +346,7 @@ function card(e,{sub=false,pos='',extraNote='',glyph=''}={}){
       <button class="tog" data-tog="${id}" aria-expanded="false" aria-label="Afficher le détail">+</button>
     </div>
     <div class="cbody">
-    <p class="idea">${esc(e.idea)}</p>
-    <div class="mine">Résumé d'aide à la lecture</div>
-    <p class="keys he">${esc(e.keys)}</p>
+    <p class="idea">${esc(e.simple)}</p>
     ${extraNote?`<p class="note">${extraNote}</p>`:''}
     <div class="btns">${btns.join('')}</div>
     <div class="txt he" data-t="${id}" hidden></div>
@@ -408,7 +406,7 @@ function renderWord(raw,isExample){
       if(it.isFinal){ const F=E[it.ch]; elems.push(F); g+=card(F,{sub:true,pos:'à la fin du mot',glyph:it.ch}); }
       it.niks.forEach((id,k)=>{ const N=E[id]; elems.push(N);
         let note=''; const hm=it.hatafMark;
-        if(hm) note=id==='שוא'?'Voyelle composée, première composante : l\'éclair dans sa forme prononcée. Le livre compte exactement dix voyelles et la voyelle composée n\'en fait pas partie ; elle se lit à travers ses deux composantes.':'Seconde composante de la voyelle composée : elle donne sa couleur et son son à l\'éclair prononcé.';
+        if(hm) note=id==='שוא'?'Ici, deux voyelles sont collées ensemble. Le livre ne parle pas de ce mélange : on le comprend avec ses deux morceaux. Voici le premier.':'Voici le second morceau : il donne sa couleur au premier.';
         if(it.shuruk) note='Point placé dans la lettre de liaison.';
         g+=card(N,{sub:true,pos:'sur cette lettre',glyph:'◌'+(hm?({'שוא':'ְ','סגול':'ֶ','פתח':'ַ','קמץ':'ָ'}[id]):(it.nikMarks.find(x=>NIK[x]&&NIK[x].includes(id))||'ּ')),extraNote:note}); });
       it.taams.forEach(id=>{ const T=E[id]; elems.push(T);
@@ -421,7 +419,7 @@ function renderWord(raw,isExample){
     });
     w.extra.forEach(id=>{ const T=E[id]; elems.push(T); cards+=card(T,{pos:'à la fin du mot',glyph:id==='פסיק'?'׀':'׃'}); });
   });
-  html+=`<details class="more"><summary>Développer : chaque élément selon le livre</summary><div class="cards">${cards}</div></details>`;
+  html+=`<details class="more"><summary>En savoir plus sur chaque lettre</summary><div class="cards">${cards}</div></details>`;
   html+=`<details class="more" id="more-hits"><summary>Ce mot dans le livre <span id="hits-n"></span></summary><div id="hits" class="hits"></div></details>`;
   out.innerHTML=html;
   CURRENT={raw,words,elems};
@@ -465,13 +463,19 @@ ${raw}
 Ses éléments, dans l'ordre :
 ${structure()}
 
-Tâche : dire quel concept nouveau naît de l'association des concepts de ces éléments, dans cet ordre, puis l'effet des voyelles (et des signes de cantillation ou couronnes s'il y en a). Le livre ne compte que dix voyelles et ne parle pas des voyelles composées : une voyelle composée se lit comme l'éclair dans sa forme prononcée, coloré par la voyelle qui l'accompagne ; ne présente pas cette lecture comme venant du livre. Appuie-toi uniquement sur les passages du livre ci-dessous. Sois précis et concret, sans formules vagues ni lyrisme.`;
+Tâche : dire quelle idée nouvelle naît quand on met bout à bout les idées de ces éléments, dans cet ordre, puis ce que changent les voyelles (et les signes de chant ou les couronnes s'il y en a). Le livre ne compte que dix voyelles et ne parle pas des voyelles composées : une voyelle composée se lit comme l'éclair dans sa forme prononcée, coloré par la voyelle qui l'accompagne ; ne présente pas cette lecture comme venant du livre. Appuie-toi uniquement sur les passages du livre ci-dessous.
+
+Le lecteur peut être n'importe qui, même un enfant de douze ans ou quelqu'un qui n'a pas fait d'études. Écris donc très simplement :
+- des phrases courtes, des mots de tous les jours ;
+- aucun mot savant ou philosophique (pas de « transcendance », « essence », « manifestation », « ontologique », « dialectique », etc.) ;
+- une image concrète de la vie de tous les jours quand ça aide ;
+- pas de poésie ni de formules vagues : chaque phrase doit dire quelque chose de précis.`;
   if(forJson) return base+`
 
 Réponds uniquement avec un objet JSON de cette forme :
 {"conclusion": "...", "etapes": [{"element": "...", "apport": "..."}], "voyelles": "..."}
-- "conclusion" : deux phrases au maximum, en français simple et clair, qui disent le concept du mot. C'est la seule chose que beaucoup de lecteurs liront.
-- "etapes" : une entrée par lettre, dans l'ordre. "element" contient seulement le nom hébreu de la lettre, en caractères hébreux. "apport" : une phrase courte en français qui dit ce que cette lettre ajoute au concept, d'après le livre.
+- "conclusion" : deux phrases courtes au maximum, en français très simple, qui disent l'idée du mot. C'est la seule chose que beaucoup de lecteurs liront : elle doit se comprendre du premier coup.
+- "etapes" : une entrée par lettre, dans l'ordre. "element" contient seulement le nom hébreu de la lettre, en caractères hébreux. "apport" : une phrase courte et simple en français qui dit ce que cette lettre ajoute, d'après le livre.
 - "voyelles" : une ou deux phrases en français sur ce que les voyelles changent ; chaîne vide s'il n'y en a pas.
 Dans "conclusion", "apport" et "voyelles" : aucun mot hébreu, aucune translittération en lettres latines.
 
@@ -480,7 +484,7 @@ Passages du livre :
 ${passages()}`;
   return base+`
 
-Présentation : commence par une conclusion de deux phrases au maximum, claire et précise. Ensuite seulement, développe lettre par lettre, de préférence dans un tableau. Réponds en français. Ne mets jamais de mot hébreu au milieu d'une phrase française : écris l'hébreu sur une ligne à part. N'écris pas l'hébreu en lettres latines. Sépare ce que dit le livre de ton interprétation.
+Présentation : commence par une conclusion de deux phrases courtes au maximum, qu'on comprend du premier coup. Ensuite seulement, développe lettre par lettre, de préférence dans un tableau. Réponds en français. Ne mets jamais de mot hébreu au milieu d'une phrase française : écris l'hébreu sur une ligne à part. N'écris pas l'hébreu en lettres latines. Sépare ce que dit le livre de ton interprétation.
 
 Passages du livre :
 
@@ -493,15 +497,15 @@ async function renderVerdict(){
   if(!$('#verdict')||v!==$('#verdict')) return;
   if(!sample){ renderShare(v); return; }
   if(CTL) CTL.abort(); CTL=new AbortController(); const my=CTL;
-  v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vwait">Claude assemble les concepts du livre…</p>`;
+  v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vwait">Claude réunit les idées des lettres…</p>`;
   try{
     const r=await sample.json(buildPrompt(true),{signal:my.signal});
     if(my!==CTL) return;
     const et=Array.isArray(r.etapes)?r.etapes:[];
     v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vtext">${esc(r.conclusion||'')}</p>
       ${r.voyelles?`<p class="vvoy"><i class="kdot k-nekuda"></i>${esc(r.voyelles)}</p>`:''}
-      ${et.length?`<details class="vdet"><summary>Comment on y arrive</summary><table class="ov"><tbody>${et.map(x=>`<tr><td class="el"><span class="he">${esc(x.element||'')}</span></td><td>${esc(x.apport||'')}</td></tr>`).join('')}</tbody></table></details>`:''}
-      <p class="vnote">Interprétation de Claude à partir des passages du livre.</p>`;
+      ${et.length?`<details class="vdet"><summary>Lettre par lettre</summary><table class="ov"><tbody>${et.map(x=>`<tr><td class="el"><span class="he">${esc(x.element||'')}</span></td><td>${esc(x.apport||'')}</td></tr>`).join('')}</tbody></table></details>`:''}
+      <p class="vnote">Conclusion écrite par Claude à partir du livre.</p>`;
   }catch(e){
     if(e&&e.code==='cancelled') return;
     if(e&&['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ renderShare(v); return; }
@@ -512,7 +516,7 @@ async function renderVerdict(){
 function renderShare(v){
   const on=navigator.onLine;
   v.innerHTML=`<p class="vlabel">Conclusion</p>
-    <p class="vwait">${on?'Claude peut assembler ces concepts en une conclusion courte, à partir du texte du livre.':'Hors ligne : les concepts ci-dessus restent disponibles. La conclusion demande une connexion.'}</p>
+    <p class="vwait">${on?'Claude peut réunir ces idées en une phrase simple qui dit ce que veut dire le mot.':'Hors ligne : les idées de chaque lettre restent là. Pour la conclusion, il faut internet.'}</p>
     ${on?`<div class="act">${navigator.share?'<button class="primary" id="s-share">Demander à Claude</button><button class="ghost" id="s-copy">Copier la demande</button>':'<button class="primary" id="s-copy">Copier la demande</button><a class="ghost" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>'}</div><p class="status" id="synth-st"></p>`:''}`;
   if(!on) return;
   const st=$('#synth-st');
