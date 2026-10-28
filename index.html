@@ -364,7 +364,7 @@ function renderWord(raw,isExample){
       const L=E[it.base];
       rows+=`<tr class="letter-row"><td class="el"><span class="he">${esc(it.ch)} · ${esc(L.name)}</span><small>${ordinal(i+1)}${it.isFinal?', forme finale':''}</small></td><td>${esc(short(L.idea))}</td></tr>`;
       if(it.isFinal){ const F=E[it.ch]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(F.name)}</span><small><span class="kdot d-fin"></span>Forme finale</small></td><td>${esc(short(F.idea.replace(/^Forme (finale|fermée) : /,'')))}</td></tr>`; }
-      if(it.hatafMark){ rows+=`<tr class="sub"><td class="el"><span class="he">${esc(HATAF[it.hatafMark])}</span><small><span class="kdot d-nik"></span>Voyelle composée</small></td><td>Faite de deux voyelles que le livre explique : l'éclair, uni ${HATAF_FR[it.hatafMark]}</td></tr>`; }
+      if(it.hatafMark){ rows+=`<tr class="sub"><td class="el"><span class="he">${esc(HATAF[it.hatafMark])}</span><small><span class="kdot d-nik"></span>Voyelle composée</small></td><td>Absente des dix voyelles du livre. Se lit comme l'éclair dans sa forme prononcée, uni ${HATAF_FR[it.hatafMark]}</td></tr>`; }
       it.niks.forEach(id=>{ if(it.hatafMark) return; const N=E[id]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(N.name)}</span><small><span class="kdot d-nik"></span>Voyelle</small></td><td>${esc(short(N.idea))}</td></tr>`; });
       it.taams.forEach(id=>{ const T=E[id]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(T.name)}</span><small><span class="kdot d-taam"></span>Cantillation</small></td><td>${esc(short(T.idea))}</td></tr>`; });
       if(it.tag){ const G=E['תג-'+it.base]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(G.name)}</span><small><span class="kdot d-tag"></span>Couronnes</small></td><td>${esc(short(G.idea.replace(/^Couronnes de cette lettre : /,'')))}</td></tr>`; }
@@ -379,8 +379,8 @@ function renderWord(raw,isExample){
       if(it.isFinal){ const F=E[it.ch]; elems.push(F); g+=card(F,{sub:true,pos:'à la fin du mot',glyph:it.ch}); }
       it.niks.forEach((id,k)=>{ const N=E[id]; elems.push(N);
         let note=''; const hm=it.hatafMark;
-        if(hm&&k===0) g+=`<div class="notice" style="margin-inline-start:18px">Cette lettre porte une voyelle composée. Le livre ne lui consacre pas de passage : elle se lit à travers les deux voyelles qui la forment, expliquées ci-dessous.<span class="he">${esc(HATAF[hm])}</span></div>`;
-        if(hm) note=id==='שוא'?'Première composante de la voyelle composée.':'Seconde composante de la voyelle composée.';
+        if(hm&&k===0) g+=`<div class="notice" style="margin-inline-start:18px">Cette lettre porte une voyelle composée. Le livre compte exactement dix voyelles, l'éclair muet et l'éclair prononcé comptant pour deux, et celle-ci n'en fait pas partie. Elle n'est pas une voyelle nouvelle : c'est l'éclair prononcé, adapté aux lettres de la gorge, coloré par une seconde voyelle. Elle se lit donc à travers les deux fiches ci-dessous.<span class="he">${esc(HATAF[hm])}</span></div>`;
+        if(hm) note=id==='שוא'?'Première composante : l\'éclair dans sa forme prononcée. Selon le livre, elle vient du tout début de l\'élan vers la révélation cachée, dont seuls les premiers rayons effleurent la conscience.':'Seconde composante : elle donne sa couleur et son son à l\'éclair prononcé.';
         if(it.shuruk) note='Point placé dans la lettre de liaison.';
         g+=card(N,{sub:true,pos:'sur cette lettre',glyph:'◌'+(hm?({'שוא':'ְ','סגול':'ֶ','פתח':'ַ','קמץ':'ָ'}[id]):(it.nikMarks.find(x=>NIK[x]&&NIK[x].includes(id))||'ּ')),extraNote:note}); });
       it.taams.forEach(id=>{ const T=E[id]; elems.push(T);
@@ -419,7 +419,7 @@ function buildPrompt(){
 Le mot étudié :
 ${raw.trim()}
 
-Explique ce mot comme un concept nouveau, né de l'association des concepts de ses éléments, dans l'ordre où ils se suivent dans le mot. Une voyelle composée de deux signes se lit à travers les deux voyelles qui la forment. Puis montre comment les voyelles modifient ou colorent ce concept, et fais de même pour les signes de cantillation et les couronnes s'il y en a.
+Explique ce mot comme un concept nouveau, né de l'association des concepts de ses éléments, dans l'ordre où ils se suivent dans le mot. Le livre ne compte que dix voyelles et ne parle pas des voyelles composées : une voyelle composée se lit comme l'éclair dans sa forme prononcée, coloré par la voyelle qui l'accompagne. Dis-le clairement, et ne présente pas cette lecture comme venant du livre. Puis montre comment les voyelles modifient ou colorent ce concept, et fais de même pour les signes de cantillation et les couronnes s'il y en a.
 
 Appuie-toi uniquement sur les passages du livre ci-dessous. Cite les expressions du livre quand tu t'en sers, et sépare clairement ce que dit le livre de ton interprétation.
 
