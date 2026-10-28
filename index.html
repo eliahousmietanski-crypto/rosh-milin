@@ -241,7 +241,8 @@ const LETTERS='אבגדהוזחטיכלמנסעפצקרשת';
 const FINALS={'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'};
 const TAGIN=new Set(['ג','ז','ט','נ','ע','צ','ש']);
 const NIK={'ָ':['קמץ'],'ׇ':['קמץ'],'ַ':['פתח'],'ֶ':['סגול'],'ִ':['חיריק'],'ֻ':['קבוץ'],'ֹ':['חולם'],'ֺ':['חולם'],'ֵ':['צירה'],'ְ':['שוא'],'ֱ':['שוא','סגול'],'ֲ':['שוא','פתח'],'ֳ':['שוא','קמץ']};
-const HATAF={'ֱ':'חטף סגול','ֲ':'חטף פתח','ֳ':'חטף קמץ'};
+const HATAF={'ֱ':'חֲטַף סֶגּוֹל','ֲ':'חֲטַף פַּתַּח','ֳ':'חֲטַף קָמַץ'};
+const HATAF_FR={'ֱ':'au trésor propre','ֲ':'à l\'ouverture','ֳ':'au caché'};
 const TAAM={'֑':'מנח אתנחתא','֒':'מנח סגול','֓':'שלשלת','֔':'זקף קטן','֕':'זקף גדול','֖':'טפחא','֗':'מנח מנח רביעי','֘':'מנח זרקא','֮':'מנח זרקא','֙':'פשטא','֚':'יתיב','֛':'תביר','֜':'אזלא גרש','֝':'אזלא גרש','֞':'גרשים','֟':'קרני פרה','֠':'תלישא גדולה','֡':'פזר','֣':'מנח סגול','֤':'מהפך פשטא','֥':'מרכא','֦':'מרכא כפולה','֧':'דרגא','֨':'קדמא','֩':'תלישא קטנה','֪':'ירח בן יומו','ֽ':'סוף פסוק'};
 const TAAM_NAME={'֑':'אתנחתא','֒':'סגול','֓':'שלשלת','֔':'זקף קטן','֕':'זקף גדול','֖':'טפחא','֗':'רביעי','֘':'זרקא','֮':'זרקא','֙':'פשטא','֚':'יתיב','֛':'תביר','֜':'גרש','֝':'גרש','֞':'גרשים','֟':'קרני פרה','֠':'תלישא גדולה','֡':'פזר','֣':'מונח','֤':'מהפך','֥':'מרכא','֦':'מרכא כפולה','֧':'דרגא','֨':'קדמא','֩':'תלישא קטנה','֪':'ירח בן יומו','ֽ':'סילוק'};
 const KIND_FR={letter:'Lettre',final:'Lettre finale',tag:'Couronnes',nekuda:'Voyelle',taam:'Cantillation'};
@@ -283,6 +284,7 @@ function analyze(raw){
           else it.dagesh=true;
         }
       }
+      it.hatafMark=it.nikMarks.find(x=>HATAF[x])||null;
       return it;
     });
     word.plain=word.clusters.map(k=>k.ch).join('');
@@ -362,7 +364,8 @@ function renderWord(raw,isExample){
       const L=E[it.base];
       rows+=`<tr class="letter-row"><td class="el"><span class="he">${esc(it.ch)} · ${esc(L.name)}</span><small>${ordinal(i+1)}${it.isFinal?', forme finale':''}</small></td><td>${esc(short(L.idea))}</td></tr>`;
       if(it.isFinal){ const F=E[it.ch]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(F.name)}</span><small><span class="kdot d-fin"></span>Forme finale</small></td><td>${esc(short(F.idea.replace(/^Forme (finale|fermée) : /,'')))}</td></tr>`; }
-      it.niks.forEach(id=>{ const N=E[id]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(N.name)}</span><small><span class="kdot d-nik"></span>Voyelle</small></td><td>${esc(short(N.idea))}</td></tr>`; });
+      if(it.hatafMark){ rows+=`<tr class="sub"><td class="el"><span class="he">${esc(HATAF[it.hatafMark])}</span><small><span class="kdot d-nik"></span>Voyelle composée</small></td><td>Faite de deux voyelles que le livre explique : l'éclair, uni ${HATAF_FR[it.hatafMark]}</td></tr>`; }
+      it.niks.forEach(id=>{ if(it.hatafMark) return; const N=E[id]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(N.name)}</span><small><span class="kdot d-nik"></span>Voyelle</small></td><td>${esc(short(N.idea))}</td></tr>`; });
       it.taams.forEach(id=>{ const T=E[id]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(T.name)}</span><small><span class="kdot d-taam"></span>Cantillation</small></td><td>${esc(short(T.idea))}</td></tr>`; });
       if(it.tag){ const G=E['תג-'+it.base]; rows+=`<tr class="sub"><td class="el"><span class="he">${esc(G.name)}</span><small><span class="kdot d-tag"></span>Couronnes</small></td><td>${esc(short(G.idea.replace(/^Couronnes de cette lettre : /,'')))}</td></tr>`; }
     });
@@ -375,10 +378,11 @@ function renderWord(raw,isExample){
       let g=`<div class="group">`+card(L,{pos:ordinal(i+1),glyph:it.base});
       if(it.isFinal){ const F=E[it.ch]; elems.push(F); g+=card(F,{sub:true,pos:'à la fin du mot',glyph:it.ch}); }
       it.niks.forEach((id,k)=>{ const N=E[id]; elems.push(N);
-        let note=''; const hm=it.nikMarks.find(x=>HATAF[x]);
-        if(hm&&(id==='שוא'||k>0)) note=`Voyelle composée : le livre n'a pas de passage propre pour elle ; elle réunit deux voyelles qu'il explique.`;
+        let note=''; const hm=it.hatafMark;
+        if(hm&&k===0) g+=`<div class="notice" style="margin-inline-start:18px">Cette lettre porte une voyelle composée. Le livre ne lui consacre pas de passage : elle se lit à travers les deux voyelles qui la forment, expliquées ci-dessous.<span class="he">${esc(HATAF[hm])}</span></div>`;
+        if(hm) note=id==='שוא'?'Première composante de la voyelle composée.':'Seconde composante de la voyelle composée.';
         if(it.shuruk) note='Point placé dans la lettre de liaison.';
-        g+=card(N,{sub:true,pos:'sur cette lettre',glyph:'◌'+(it.nikMarks.find(x=>NIK[x]&&NIK[x].includes(id))||'ּ'),extraNote:note}); });
+        g+=card(N,{sub:true,pos:'sur cette lettre',glyph:'◌'+(hm?({'שוא':'ְ','סגול':'ֶ','פתח':'ַ','קמץ':'ָ'}[id]):(it.nikMarks.find(x=>NIK[x]&&NIK[x].includes(id))||'ּ')),extraNote:note}); });
       it.taams.forEach(id=>{ const T=E[id]; elems.push(T);
         const mk=it.taamMarks.find(x=>TAAM[x]===id); const nm=TAAM_NAME[mk];
         const note=(plainHeb(T.name)!==plainHeb(nm))?`Le signe tapé fait partie de la combinaison que le livre explique sous ce nom.`:'';
@@ -415,7 +419,7 @@ function buildPrompt(){
 Le mot étudié :
 ${raw.trim()}
 
-Explique ce mot comme un concept nouveau, né de l'association des concepts de ses éléments, dans l'ordre où ils se suivent dans le mot. Puis montre comment les voyelles modifient ou colorent ce concept, et fais de même pour les signes de cantillation et les couronnes s'il y en a.
+Explique ce mot comme un concept nouveau, né de l'association des concepts de ses éléments, dans l'ordre où ils se suivent dans le mot. Une voyelle composée de deux signes se lit à travers les deux voyelles qui la forment. Puis montre comment les voyelles modifient ou colorent ce concept, et fais de même pour les signes de cantillation et les couronnes s'il y en a.
 
 Appuie-toi uniquement sur les passages du livre ci-dessous. Cite les expressions du livre quand tu t'en sers, et sépare clairement ce que dit le livre de ton interprétation.
 
