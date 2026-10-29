@@ -463,9 +463,10 @@ function renderWord(raw,isExample){
   html+=`<section class="assemble" id="assemble"></section>`;
   html+=`<details class="more" id="more-hits"><summary>Ce mot dans le livre <span id="hits-n"></span></summary><div id="hits" class="hits"></div></details>`;
   html+=`<details class="more" id="more-tk"><summary>Ce mot dans le תנ״ך <span id="tk-n"></span></summary><div id="tk" class="hits"></div></details>`;
+  CORPORA.forEach(c=>{ html+=`<details class="more" data-corpus="${c.id}"><summary>Ce mot dans ${c.title} <span class="cp-n"></span></summary><div class="hits cp"></div></details>`; });
   out.innerHTML=html;
   CURRENT={raw,words,elems};
-  renderVerdict(); renderHits(words); renderTanakh(words); renderNakdan(words);
+  renderVerdict(); renderHits(words); renderTanakh(words); renderNakdan(words); bindCorpora(words);
 }
 let CURRENT=null;
 
@@ -743,6 +744,78 @@ function drawTanakh(){
 function bindTk(){
   document.querySelectorAll('[data-tkf]').forEach(b=>b.onclick=()=>{TKR.f=b.dataset.tkf;TKR.shown=30;drawTanakh();});
   const m=$('#tk-more'); if(m) m.onclick=()=>{TKR.shown+=50;drawTanakh();};
+}
+
+/* ---------- זהר et livres de Breslov ---------- */
+// Les textes sont gros : chaque ensemble n'est téléchargé que quand on ouvre son panneau.
+const CORPORA=[
+  {id:'zohar',title:'le זהר',books:[['זהר',['zohar_1','zohar_2']],['זהר חדש',['zohar_chadash']],['תיקוני זהר',['tikkunei_zohar']]]},
+  {id:'nachman',title:'les livres de רבי נחמן',books:[['ליקוטי מוהר״ן',['likutei_moharan']],['ספר המידות',['sefer_hamidot']],['סיפורי מעשיות',['sipurei_maasiyot']],['שיחות הר״ן',['sichot_haran']]]},
+  {id:'natan',title:'les livres de רבי נתן',books:[['ליקוטי הלכות',['likutei_halakhot_1','likutei_halakhot_2','likutei_halakhot_3','likutei_halakhot_4']],['ליקוטי תפילות',['likutei_tefilot']],['ליקוטי עצות',['likutei_etzot']],['חיי מוהר״ן',['chayei_moharan']],['שבחי הר״ן',['shivchei_haran']]]},
+];
+const CSIZE={zohar:21,nachman:7,natan:43};
+const MK='[֑-ׇֽֿׁׂׅׄ]*';
+function corpusRe(words){
+  const w=words.map(x=>[...consOf(x.plain)].map(l=>l+MK).join(''));
+  return new RegExp(`(?<![א-ת֑-ׇ])((?:[ובהלמשכ]${MK}){0,3}?)(${w.join('[\\s־]+')})(?![א-ת֑-ׇׅ])`,'g');
+}
+const CR={};
+function bindCorpora(words){
+  document.querySelectorAll('[data-corpus]').forEach(d=>{
+    const c=CORPORA.find(x=>x.id===d.dataset.corpus);
+    const box=d.querySelector('.cp');
+    box.innerHTML=`<p class="status">Ouvre ce panneau pour chercher. La première fois, ${CSIZE[c.id]} Mo de texte sont téléchargés ; ensuite tout reste dans l'application.</p>`;
+    d.addEventListener('toggle',()=>{ if(d.open&&!d._done){ d._done=true; searchCorpus(c,d,words); } });
+  });
+}
+async function searchCorpus(c,d,words){
+  const box=d.querySelector('.cp'), n=d.querySelector('.cp-n');
+  const re=corpusRe(words); const res=[], cnt={}; let done=0;
+  const files=c.books.flatMap(([he,fs])=>fs.map(f=>[he,f]));
+  try{
+    for(const [he,f] of files){
+      box.innerHTML=`<p class="status">Recherche… ${done}/${files.length} (${esc(he)})</p>`;
+      const r=await fetch('corpus/'+f+'.txt'); if(!r.ok) throw 0;
+      const t=await r.text(); if(!d.isConnected) return;
+      re.lastIndex=0; let m;
+      while((m=re.exec(t))){
+        const pre=m[1].length>0, k=cnt[he]||(cnt[he]={exact:0,all:0,kept:0});
+        k.all++; if(!pre) k.exact++;
+        if(k.kept++<500){ const a=t.lastIndexOf('\n',m.index)+1, b=t.indexOf('\n',m.index), tab=t.indexOf('\t',a);
+          res.push({he,ref:t.slice(a,tab),txt:t.slice(tab+1,b<0?t.length:b),i:m.index-tab-1,len:m[0].length,pre}); }
+      }
+      done++;
+    }
+  }catch(e){
+    d._done=false; if(n) n.textContent='';
+    box.innerHTML=`<p class="status">${navigator.onLine?'Le texte n\'a pas pu être chargé.':'Hors ligne : ces textes seront disponibles après une première recherche en ligne.'}</p><div class="act"><button class="ghost" data-cretry>Réessayer</button></div>`;
+    box.querySelector('[data-cretry]').onclick=()=>{d._done=true;searchCorpus(c,d,words);}; return;
+  }
+  CR[c.id]={res,cnt,f:res.some(r=>!r.pre)?'exact':'all',shown:30,c};
+  drawCorpus(d);
+}
+function drawCorpus(d){
+  const R=CR[d.dataset.corpus], box=d.querySelector('.cp'), n=d.querySelector('.cp-n');
+  const C=Object.values(R.cnt), exact=C.reduce((a,k)=>a+k.exact,0), all=C.reduce((a,k)=>a+k.all,0), more=C.some(k=>k.all>500);
+  if(n) n.textContent=all?`(${exact} fois${all>exact?`, ${all} avec préfixe`:''})`:'(aucune)';
+  if(!all){ box.innerHTML='<p class="status">Ces lettres n\'apparaissent pas dans ces textes, même avec une lettre ajoutée devant.</p>'; return; }
+  const list=R.res.filter(r=>R.f==='exact'?!r.pre:true);
+  const byBook={}; Object.entries(R.cnt).forEach(([b,k])=>{ const v=R.f==='exact'?k.exact:k.all; if(v) byBook[b]=v; });
+  let h=`<p class="status">Mêmes lettres : le mot écrit ainsi, avec ou sans voyelles. Avec préfixe : aussi quand une lettre est ajoutée devant le mot, comme <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans ». Dans un texte sans voyelles, une lettre du mot peut parfois passer pour un préfixe.${more?' Pour chaque livre, seuls les 500 premiers passages s\'affichent ; le décompte, lui, est complet.':''}</p>`;
+  h+=`<div class="tk-filters">${exact?`<button data-cf="exact" aria-pressed="${R.f==='exact'}">Mêmes lettres · ${exact}</button>`:''}${all>exact?`<button data-cf="all" aria-pressed="${R.f==='all'}">Avec préfixe · ${all}</button>`:''}</div>`;
+  h+=`<div class="tk-books" dir="rtl">${Object.keys(byBook).map(b=>`<span><b>${esc(b)}</b> ${byBook[b]}</span>`).join('')}</div>`;
+  h+=list.slice(0,R.shown).map(r=>{
+    const a=Math.max(0,r.i-90), b=Math.min(r.txt.length,r.i+r.len+90);
+    const sp=x=>{ const k=x.indexOf(' '); return k<0?x:x.slice(k); };
+    const pre=a>0?'…'+sp(r.txt.slice(a,r.i)).trimStart():r.txt.slice(0,r.i);
+    const post=b<r.txt.length?r.txt.slice(r.i+r.len,b).replace(/\s\S*$/,'')+'…':r.txt.slice(r.i+r.len);
+    return `<div class="hit"><span class="ref">${esc(r.he)}, ${esc(r.ref)}</span><span class="he" lang="he">${esc(pre)}<mark>${esc(r.txt.substr(r.i,r.len))}</mark>${esc(post)}</span></div>`;
+  }).join('');
+  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" data-cmore>Afficher plus (${list.length-R.shown} restants)</button></div>`;
+  h+=`<p class="status">Textes : Sefaria (sefaria.org).</p>`;
+  box.innerHTML=h;
+  box.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{R.f=b.dataset.cf;R.shown=30;drawCorpus(d);});
+  const m=box.querySelector('[data-cmore]'); if(m) m.onclick=()=>{R.shown+=50;drawCorpus(d);};
 }
 
 /* ---------- palettes ---------- */

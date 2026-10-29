@@ -1,4 +1,4 @@
-const V='rosh-milin-v8';
+const V='rosh-milin-v9';
 const CORE=['./','index.html','data.json','manifest.webmanifest','icon-192.png','icon-512.png'];
 const PAGES=[
   'pages/001.jpg',
@@ -151,7 +151,7 @@ self.addEventListener('fetch',e=>{
   const u=new URL(e.request.url); if(e.request.method!=='GET') return;
   if(u.origin===location.origin){
     // pages et images : cache d'abord ; index et données : réseau d'abord pour recevoir les mises à jour
-    if(/\.(jpg|png)$/.test(u.pathname)||u.pathname.endsWith("/tanakh.txt")) e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;})));
+    if(/\.(jpg|png)$/.test(u.pathname)||u.pathname.endsWith("/tanakh.txt")||u.pathname.includes("/corpus/")) e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;})));
     else e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||caches.match('index.html'))));
   } else if(/fonts\.(googleapis|gstatic)\.com$/.test(u.hostname)){
     e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;})));
