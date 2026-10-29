@@ -208,7 +208,8 @@ details.more[open]>summary{margin-bottom:10px}
 .nopt{display:grid;justify-items:center;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;text-align:center}
 .nopt .nw{font-size:1.6rem;line-height:1.3}
 .nopt .ns{font-size:.85rem}
-.nopt .ng{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.nopt .ng{font-size:.75rem;color:var(--muted)}
+.nopt .nf{font-size:.85rem;color:var(--muted)}
 .nbtn{border:1px solid var(--line)!important;border-radius:10px;padding:8px 12px;font-weight:600;background:transparent}
 .nakdan .act{display:flex;gap:8px;margin-top:6px}
 .nakdan .act button{border-radius:10px;padding:8px 12px;font-weight:600}
@@ -466,17 +467,27 @@ let CURRENT=null;
 let NCTL=null;
 function hasNikud(w){ return /[ְ-ׇּׁׂ]/.test(w.full.normalize('NFD')); }
 function nakdanPrompt(plain){
-  return `Tu es un נקדן : tu proposes les façons de vocaliser un mot hébreu écrit sans voyelles.
+  return `Tu es un נקדן très rigoureux : tu donnes TOUTES les façons de vocaliser un mot hébreu écrit sans voyelles.
 
 Mot :
 ${plain}
 
-Donne toutes les lectures qui existent vraiment pour ces lettres exactes, en hébreu biblique, rabbinique ou moderne : noms, verbes conjugués (à toutes les personnes et tous les temps possibles), adjectifs, mots avec préfixe ou suffixe s'ils sont courants. N'invente aucune forme qui n'existe pas. Mets les lectures les plus courantes en premier. Au maximum 15.
+Procède méthodiquement, sans rien sauter :
+1. Découpages : le mot entier comme racine ou comme nom ; et aussi, si c'est possible, une ou deux premières lettres comme préfixe (ו ה ב כ ל מ ש) suivies d'un mot qui existe, ou une dernière lettre comme suffixe.
+2. Pour chaque découpage, passe en revue :
+   - les noms et adjectifs : singulier, état construit, et la forme de pause (la vocalisation qu'un mot prend à la fin d'un verset ou d'une demi-phrase) ;
+   - les noms des lettres, des voyelles et des signes, s'ils s'écrivent avec ces lettres ;
+   - pour les verbes, chacune des sept formes (קל, נפעל, פיעל, פועל, הפעיל, הופעל, התפעל), à chaque temps et à chaque personne qui s'écrivent exactement avec ces lettres : passé, présent, futur, impératif, infinitif, y compris les formes de pause.
+3. Vérifie chaque vocalisation lettre par lettre : les lettres doivent être exactement celles du mot, sans en ajouter ni en retirer.
+4. Garde seulement ce qui existe vraiment dans la Bible, la littérature rabbinique ou l'hébreu moderne. Au moindre doute, écarte la forme. Une forme inventée est bien pire qu'une forme oubliée.
+Mets les lectures les plus courantes en premier. Au maximum 40.
 
 Réponds uniquement avec un tableau JSON de cette forme :
-[{"mot": "...", "sens": "...", "genre": "..."}]
+[{"mot": "...", "sens": "...", "analyse": "...", "forme": "...", "genre": "..."}]
 - "mot" : le mot avec toutes ses voyelles, en caractères hébreux.
-- "sens" : le sens en français très simple, en quelques mots, sans aucun mot hébreu ni translittération.
+- "sens" : le sens en français très simple, en quelques mots.
+- "analyse" : l'analyse en français simple, par exemple « verbe, passé, il » ou « nom, forme de pause » ou « préfixe « à » + nom ». Pas de mot hébreu, pas de translittération.
+- "forme" : pour un verbe, le nom de sa forme en caractères hébreux (par exemple פיעל) ; sinon une chaîne vide.
 - "genre" : "nom", "verbe", "adjectif" ou "autre".`;
 }
 async function renderNakdan(words){
@@ -488,7 +499,7 @@ async function renderNakdan(words){
   runNakdan(box,plain,head);
 }
 async function runNakdan(box,plain,head){
-  box.innerHTML=`<p class="nhead">${head}</p><p class="vwait">Recherche des lectures possibles…</p>`;
+  box.innerHTML=`<p class="nhead">${head}</p><p class="vwait">Recherche de toutes les lectures possibles… (ça peut prendre une minute)</p>`;
   const sample=await getSample();
   if(!box.isConnected) return;
   if(!sample){
@@ -498,11 +509,11 @@ async function runNakdan(box,plain,head){
   }
   if(NCTL) NCTL.abort(); NCTL=new AbortController(); const my=NCTL;
   try{
-    const arr=await sample.json(nakdanPrompt(plain),{signal:my.signal});
+    const arr=await sample.json(nakdanPrompt(plain),{signal:my.signal,modelTier:'complex'});
     if(my!==NCTL||!box.isConnected) return;
     const list=(Array.isArray(arr)?arr:[]).filter(x=>x&&x.mot&&plainHeb(x.mot)===plainHeb(plain));
     if(!list.length){ box.innerHTML=`<p class="nhead">${head}</p><p class="vwait">Aucune lecture trouvée.</p>`; return; }
-    box.innerHTML=`<p class="nhead">${head}</p><div class="nlist">${list.map((x,i)=>`<button class="nopt" data-nk="${i}"><span class="he nw">${esc(x.mot)}</span><span class="ns">${esc(x.sens||'')}</span><span class="ng">${esc(x.genre||'')}</span></button>`).join('')}</div><p class="vnote">Choisis une lecture pour voir ce que disent ses lettres et ses voyelles. Lectures proposées par Claude : vérifie-les.</p>`;
+    box.innerHTML=`<p class="nhead">${head}</p><div class="nlist">${list.map((x,i)=>`<button class="nopt" data-nk="${i}"><span class="he nw">${esc(x.mot)}</span><span class="ns">${esc(x.sens||'')}</span><span class="ng">${esc(x.analyse||x.genre||'')}</span>${x.forme?`<span class="he nf">${esc(x.forme)}</span>`:''}</button>`).join('')}</div><p class="vnote">Choisis une lecture pour voir ce que disent ses lettres et ses voyelles. Lectures proposées par Claude : vérifie-les.</p>`;
     box.querySelectorAll('[data-nk]').forEach(b=>b.onclick=()=>{ const m=list[+b.dataset.nk].mot; $('#q').value=m; try{localStorage.setItem('rm-last',m);}catch(e){} renderWord(m,false); window.scrollTo({top:0}); });
   }catch(e){
     if(e&&e.code==='cancelled') return;
