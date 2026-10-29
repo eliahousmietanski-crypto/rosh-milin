@@ -156,6 +156,12 @@ table.ov tr.letter-row:first-child td{border-top:0}
 .hit mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 2px}
 .hit small{color:var(--muted);font-size:.78rem;display:block;margin-top:4px}
 .hit button{background:transparent;border:0;padding:0;text-decoration:underline;font-size:.78rem;color:var(--muted)}
+.tk-filters{display:flex;flex-wrap:wrap;gap:6px}
+.tk-filters button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:4px 12px;font-size:.85rem;font-weight:600;color:var(--muted)}
+.tk-filters button[aria-pressed="true"]{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.tk-books{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.85rem;color:var(--muted)}
+.tk-books b{font-family:var(--heb);font-weight:600;color:var(--ink)}
+.hit .ref{font-family:var(--heb);font-size:.95rem;color:var(--muted)}
 
 
 /* conclusion */
@@ -456,9 +462,10 @@ function renderWord(raw,isExample){
   html+=`<details class="more"><summary>En savoir plus sur chaque lettre</summary><div class="cards">${cards}</div></details>`;
   html+=`<section class="assemble" id="assemble"></section>`;
   html+=`<details class="more" id="more-hits"><summary>Ce mot dans le livre <span id="hits-n"></span></summary><div id="hits" class="hits"></div></details>`;
+  html+=`<details class="more" id="more-tk"><summary>Ce mot dans le תנ״ך <span id="tk-n"></span></summary><div id="tk" class="hits"></div></details>`;
   out.innerHTML=html;
   CURRENT={raw,words,elems};
-  renderVerdict(); renderHits(words); renderNakdan(words);
+  renderVerdict(); renderHits(words); renderTanakh(words); renderNakdan(words);
 }
 let CURRENT=null;
 
@@ -654,6 +661,88 @@ function renderHits(words){
     const ttl=h.sec.title.replace(/[״"#]/g,'').trim();
     return `<div class="hit"><span class="he">${pre}<mark>${mid}</mark>${post}</span><small><span class="he" style="font-size:.9rem">${esc(ttl)}</span></small><button data-page="${h.sec.pdf[0]}">Voir la page ${h.sec.pdf[0]-2}</button></div>`;
   }).join('');
+}
+
+/* ---------- occurrences dans le תנ"ך ---------- */
+const BOOKS=['בראשית','שמות','ויקרא','במדבר','דברים','יהושע','שופטים','שמואל א','שמואל ב','מלכים א','מלכים ב','ישעיהו','ירמיהו','יחזקאל','הושע','יואל','עמוס','עובדיה','יונה','מיכה','נחום','חבקוק','צפניה','חגי','זכריה','מלאכי','תהלים','משלי','איוב','שיר השירים','רות','איכה','קהלת','אסתר','דניאל','עזרא','נחמיה','דברי הימים א','דברי הימים ב'];
+let TK=null, TKP=null;
+const consOf=s=>s.replace(/[^א-ת]/g,'');
+const vowOf=s=>s.normalize('NFD').replace(/[^א-תְ-ׇֻ]/g,'').replace(/ֺ/g,'ֹ').replace(/ׇ/g,'ָ');
+function gem(n){
+  let s=''; for(const [v,c] of [[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק']]) while(n>=v){s+=c;n-=v;}
+  if(n===15) return s+'טו'; if(n===16) return s+'טז';
+  return s+(n>=10?'יכלמנסעפצ'[Math.floor(n/10)-1]:'')+(n%10?'אבגדהוזחט'[n%10-1]:'');
+}
+function loadTanakh(){
+  if(!TKP) TKP=fetch('tanakh.txt').then(r=>{ if(!r.ok) throw 0; return r.text(); }).then(t=>{
+    TK=t.split('\n').filter(Boolean).map(l=>{
+      const [ref,txt]=l.split('\t'); const [b,c,v]=ref.split(' ').map(Number);
+      // chaque mot : lettres sans préfixe, lettres avec préfixe, voyelles ; le כתיב et le קרי comptent tous les deux
+      const toks=txt.split(/[ ־]+/).filter(x=>/[א-ת]/.test(x)).map(x=>{
+        const y=x.replace(/[()[\]׃]/g,''); const i=y.indexOf('/');
+        return {base:consOf(i<0?y:y.slice(i+1)),full:consOf(y),vow:vowOf(y.replace('/','')),pre:i>0};
+      });
+      return {b,c,v,txt,toks};
+    });
+  }).catch(e=>{TKP=null;throw e;});
+  return TKP;
+}
+let TKR=null;
+async function renderTanakh(words){
+  const box=$('#tk'), n=$('#tk-n'); if(!box) return;
+  box.innerHTML='<p class="status">Recherche dans le תנ״ך…</p>';
+  try{ await loadTanakh(); }catch(e){
+    if(n) n.textContent='';
+    box.innerHTML=`<p class="status">${navigator.onLine?'Le texte du תנ״ך n\'a pas pu être chargé.':'Hors ligne : le texte du תנ״ך sera disponible après une première ouverture en ligne.'}</p><div class="act"><button class="ghost" id="tk-retry">Réessayer</button></div>`;
+    $('#tk-retry').onclick=()=>renderTanakh(words); return;
+  }
+  if(!CURRENT||CURRENT.words!==words) return;
+  const tw=words.map(w=>({c:consOf(w.plain),v:hasNikud(w)?vowOf(w.full):null}));
+  const withV=tw.some(t=>t.v);
+  const res=[];
+  for(const vs of TK){
+    const T=vs.toks;
+    for(let i=0;i+tw.length<=T.length;i++){
+      let ok=true, same=true, pre=false;
+      for(let k=0;k<tw.length&&ok;k++){
+        const x=T[i+k], t=tw[k];
+        if(x.full===t.c){ if(t.v&&x.vow!==t.v) same=false; }
+        else if(k===0&&x.pre&&x.base===t.c){ pre=true; if(t.v&&!x.vow.endsWith(t.v)) same=false; }
+        else ok=false;
+      }
+      if(ok){ res.push({vs,i,pre,same:withV&&same}); }
+    }
+  }
+  TKR={res,withV,len:tw.length,f:withV&&res.some(r=>r.same&&!r.pre)?'same':(res.some(r=>!r.pre)?'exact':'all'),shown:30};
+  drawTanakh();
+}
+function drawTanakh(){
+  const box=$('#tk'), n=$('#tk-n'), R=TKR; if(!box||!R) return;
+  const cnt={same:R.res.filter(r=>r.same&&!r.pre).length, exact:R.res.filter(r=>!r.pre).length, all:R.res.length};
+  if(n) n.innerHTML=cnt.all?`(${cnt.exact} fois${cnt.all>cnt.exact?`, ${cnt.all} avec préfixe`:''})`:'(aucune)';
+  if(!cnt.all){ box.innerHTML='<p class="status">Ces lettres ne forment aucun mot du תנ״ך, même avec une lettre ajoutée devant (<bdi>ו, ה, ב, כ, ל, מ, ש</bdi>).</p>'; return; }
+  const list=R.res.filter(r=>R.f==='same'?(r.same&&!r.pre):R.f==='exact'?!r.pre:true);
+  const fb=(k,label)=>cnt[k]?`<button data-tkf="${k}" aria-pressed="${R.f===k}">${label} · ${cnt[k]}</button>`:'';
+  const byBook={}; list.forEach(r=>{byBook[r.vs.b]=(byBook[r.vs.b]||0)+1;});
+  let h=`<p class="status">${R.withV?'Même lecture : mêmes lettres et mêmes voyelles. ':''}Mêmes lettres : le mot écrit ainsi, quelle que soit sa lecture. Avec préfixe : aussi quand une lettre est ajoutée devant le mot, comme <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans ».</p>`;
+  h+=`<div class="tk-filters">${R.withV?fb('same','Même lecture'):''}${fb('exact','Mêmes lettres')}${cnt.all>cnt.exact?fb('all','Avec préfixe'):''}</div>`;
+  if(!list.length){ box.innerHTML=h+'<p class="status">Aucun passage pour ce choix.</p>'; bindTk(); return; }
+  h+=`<div class="tk-books" dir="rtl">${Object.keys(byBook).map(b=>`<span><b>${BOOKS[b]}</b> ${byBook[b]}</span>`).join('')}</div>`;
+  h+=list.slice(0,R.shown).map(r=>{
+    let k=-1; const parts=r.vs.txt.split(/([ ־]+)/);
+    const out=parts.map(p=>{
+      if(!/[א-ת]/.test(p)) return esc(p);
+      k++; const t=esc(p.replace('/','')); return k>=r.i&&k<r.i+R.len?`<mark>${t}</mark>`:t;
+    }).join('');
+    return `<div class="hit"><span class="ref">${BOOKS[r.vs.b]} ${gem(r.vs.c)}, ${gem(r.vs.v)}</span><span class="he" lang="he">${out}</span></div>`;
+  }).join('');
+  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" id="tk-more">Afficher plus (${list.length-R.shown} restants)</button></div>`;
+  h+=`<p class="status">Texte : codex de Leningrad. Un mot entre ( ) est écrit ainsi ; le mot entre [ ] qui le suit est celui qu'on lit.</p>`;
+  box.innerHTML=h; bindTk();
+}
+function bindTk(){
+  document.querySelectorAll('[data-tkf]').forEach(b=>b.onclick=()=>{TKR.f=b.dataset.tkf;TKR.shown=30;drawTanakh();});
+  const m=$('#tk-more'); if(m) m.onclick=()=>{TKR.shown+=50;drawTanakh();};
 }
 
 /* ---------- palettes ---------- */
