@@ -1,0 +1,238 @@
+[
+ {
+  "id": "zohar",
+  "he": "זהר",
+  "files": [
+   "zohar_1.txt",
+   "zohar_2.txt"
+  ],
+  "source": [
+   [
+    "Vocalized Zohar, Israel 2013",
+    "https://www.nli.org.il/he/books/NNL_ALEPH990035741170205171/NLI"
+   ]
+  ]
+ },
+ {
+  "id": "zohar_chadash",
+  "he": "זהר חדש",
+  "files": [
+   "zohar_chadash.txt"
+  ],
+  "source": [
+   [
+    "Zohar Chadash",
+    "http://www.toratemetfreeware.com/online/d_root__106_kblh.html"
+   ]
+  ]
+ },
+ {
+  "id": "tikkunei_zohar",
+  "he": "תיקוני זהר",
+  "files": [
+   "tikkunei_zohar.txt"
+  ],
+  "source": [
+   [
+    "Constantinople, 1740",
+    "https://margalya.com/pages/tz"
+   ],
+   [
+    "Tikkunei Zohar - Vocalized",
+    "https://www.toratemetfreeware.com/online/f_01153_all.html"
+   ]
+  ]
+ },
+ {
+  "id": "likutei_moharan",
+  "he": "ליקוטי מוהר״ן",
+  "files": [
+   "likutei_moharan.txt"
+  ],
+  "source": [
+   [
+    "Likutei Moharan -- MS5",
+    "http://breslev.eip.co.il/?key=2554"
+   ],
+   [
+    "Likutei Moharan -- MS3",
+    "http://breslev.eip.co.il/?key=2553"
+   ],
+   [
+    "Likutei Moharan - Or HaGanuz",
+    "http://www.orhaganuz.co.il/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99_%D7%9E%D7%95%D7%94%D7%A8%D7%9F_%D7%9C%D7%94%D7%95%D7%A8%D7%93%D7%94"
+   ],
+   [
+    "Likutei Moharan -- MS2",
+    "http://breslev.eip.co.il/?key=2556"
+   ],
+   [
+    "Likutei Moharan -- Wikisource",
+    "https://he.wikisource.org/wiki/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99_%D7%9E%D7%95%D7%94%D7%A8%22%D7%9F"
+   ],
+   [
+    "Likutei Moharan -- MS1",
+    "http://breslev.eip.co.il/?key=2552"
+   ],
+   [
+    "Likutei Moharan - rabenubook.com",
+    "http://rabenubook.com/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99-%D7%9E%D7%95%D7%94%D7%A8%D7%B4%D7%9F-%D7%90/"
+   ],
+   [
+    "Likutei Moharan -- MS4",
+    "http://breslev.eip.co.il/?key=2551"
+   ],
+   [
+    "Likutei Moharan -- MS6",
+    "http://breslev.eip.co.il/?key=2555"
+   ],
+   [
+    "Likutei Moharan Tinyana - rabenubook.com",
+    "http://rabenubook.com/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99-%D7%9E%D7%95%D7%94%D7%A8%D7%B4%D7%9F-%D7%AA%D7%A0%D7%99%D7%A0%D7%90-%D7%AA%D7%95%D7%9B%D7%9F-%D7%A2%D7%A0%D7%99%D7%99%D7%A0%D7%99%D7%9D/"
+   ]
+  ]
+ },
+ {
+  "id": "sefer_hamidot",
+  "he": "ספר המידות",
+  "files": [
+   "sefer_hamidot.txt"
+  ],
+  "source": [
+   [
+    "Sefer HaMidot, Moghilev, 1811",
+    "https://www.nli.org.il/he/books/NNL_ALEPH002016939 "
+   ],
+   [
+    "Sefer HaMidot -- rabenubook",
+    "http://rabenubook.com/category/%D7%A1%D7%A4%D7%A8-%D7%94%D7%9E%D7%99%D7%93%D7%95%D7%AA/"
+   ]
+  ]
+ },
+ {
+  "id": "sipurei_maasiyot",
+  "he": "סיפורי מעשיות",
+  "files": [
+   "sipurei_maasiyot.txt"
+  ],
+  "source": [
+   [
+    "OYW",
+    "http://mobile.tora.ws/"
+   ]
+  ]
+ },
+ {
+  "id": "sichot_haran",
+  "he": "שיחות הר״ן",
+  "files": [
+   "sichot_haran.txt"
+  ],
+  "source": [
+   [
+    "rabenubook",
+    "http://rabenubook.com/%d7%a9%d7%99%d7%97%d7%95%d7%aa-%d7%94%d7%a8%d7%b4%d7%9f-%d7%aa%d7%95%d7%9b%d7%9f-%d7%a2%d7%a0%d7%99%d7%99%d7%a0%d7%99%d7%9d/"
+   ]
+  ]
+ },
+ {
+  "id": "shivchei_haran",
+  "he": "שבחי הר״ן",
+  "files": [
+   "shivchei_haran.txt"
+  ],
+  "source": [
+   [
+    "rabenubook",
+    "http://rabenubook.com/%D7%A9%D7%91%D7%97%D7%99-%D7%94%D7%A8%D7%B4%D7%9F-%D7%AA%D7%95%D7%9B%D7%9F-%D7%A2%D7%A0%D7%99%D7%99%D7%A0%D7%99%D7%9D/"
+   ]
+  ]
+ },
+ {
+  "id": "chayei_moharan",
+  "he": "חיי מוהר״ן",
+  "files": [
+   "chayei_moharan.txt"
+  ],
+  "source": [
+   [
+    "OYW",
+    "http://mobile.tora.ws/"
+   ]
+  ]
+ },
+ {
+  "id": "likutei_halakhot",
+  "he": "ליקוטי הלכות",
+  "files": [
+   "likutei_halakhot_1.txt",
+   "likutei_halakhot_2.txt",
+   "likutei_halakhot_3.txt",
+   "likutei_halakhot_4.txt"
+  ],
+  "source": [
+   [
+    "Likutey Halakhot, Breslov Research Institute. Jerusalem-New York, 2019",
+    "https://www.nli.org.il/he/books/NNL_ALEPH997008193283205171/NLI"
+   ],
+   [
+    "Likutei Halachot: Even HaEzer 1",
+    "http://www.orhaganuz.co.il"
+   ],
+   [
+    "Likutei Halachot: Even HaEzer 2",
+    "http://www.orhaganuz.co.il"
+   ],
+   [
+    "Likutei Halachot: Choshen Mishpat 1",
+    "http://www.orhaganuz.co.il"
+   ],
+   [
+    "Likutei Halachot: Choshen Mishpat 2",
+    "http://www.orhaganuz.co.il"
+   ],
+   [
+    "Likutei Halachot: Orach Chaim 2",
+    "http://www.orhaganuz.co.il"
+   ],
+   [
+    "Likutei Halachot: Yoreh Deah 1",
+    "http://www.orhaganuz.co.il"
+   ],
+   [
+    "Likutei Halachot: Yoreh Deah 2",
+    "http://www.orhaganuz.co.il"
+   ],
+   [
+    "Likutei Halachot: Orach Chaim 1",
+    "http://www.orhaganuz.co.il"
+   ]
+  ]
+ },
+ {
+  "id": "likutei_tefilot",
+  "he": "ליקוטי תפילות",
+  "files": [
+   "likutei_tefilot.txt"
+  ],
+  "source": [
+   [
+    "Likutey Tefilos, Maleh Vigadish, 2021",
+    "https://breslovbooks.com/likutey-tefilos-regular.html"
+   ]
+  ]
+ },
+ {
+  "id": "likutei_etzot",
+  "he": "ליקוטי עצות",
+  "files": [
+   "likutei_etzot.txt"
+  ],
+  "source": [
+   [
+    "Likutei Etzot - rabenubook.com",
+    "http://rabenubook.com/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99-%D7%A2%D7%A6%D7%95%D7%AA-%D7%AA%D7%95%D7%9B%D7%9F-%D7%A2%D7%A0%D7%99%D7%99%D7%A0%D7%99%D7%9D/"
+   ]
+  ]
+ }
+]
