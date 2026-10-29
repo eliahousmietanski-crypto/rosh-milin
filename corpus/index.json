@@ -234,5 +234,57 @@
     "http://rabenubook.com/%D7%9C%D7%99%D7%A7%D7%95%D7%98%D7%99-%D7%A2%D7%A6%D7%95%D7%AA-%D7%AA%D7%95%D7%9B%D7%9F-%D7%A2%D7%A0%D7%99%D7%99%D7%A0%D7%99%D7%9D/"
    ]
   ]
+ },
+ {
+  "id": "sefer_yetzirah",
+  "he": "ספר יצירה",
+  "files": [
+   "sefer_yetzirah.txt"
+  ],
+  "source": [
+   [
+    "Sefer Yetzirah, Warsaw 1884",
+    "https://www.nli.org.il/he/books/NNL_ALEPH001310968"
+   ]
+  ]
+ },
+ {
+  "id": "gra_sefer_yetzirah",
+  "he": "פירוש הגר״א",
+  "files": [
+   "gra_sefer_yetzirah.txt"
+  ],
+  "source": [
+   [
+    "Sefer Yetzirah, Warsaw 1884",
+    "https://www.nli.org.il/he/books/NNL_ALEPH001310968"
+   ]
+  ]
+ },
+ {
+  "id": "shaarei_orah",
+  "he": "שערי אורה",
+  "files": [
+   "shaarei_orah.txt"
+  ],
+  "source": [
+   [
+    "Shaarei Orah, grimoar",
+    "http://www.hebrew.grimoar.cz/gikatalia/saare_ora.htm"
+   ]
+  ]
+ },
+ {
+  "id": "hirsch",
+  "he": "רש״ר הירש",
+  "files": [
+   "hirsch.txt"
+  ],
+  "source": [
+   [
+    "Der Pentateuch. Übersetzt und erläutert von Samson Raphael Hirsch, 1903 [de]",
+    "https://www.nli.org.il/he/books/NNL_ALEPH002096844/NLI"
+   ]
+  ]
  }
 ]

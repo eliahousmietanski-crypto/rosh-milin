@@ -163,7 +163,17 @@ table.ov tr.letter-row:first-child td{border-top:0}
 .tk-books b{font-family:var(--heb);font-weight:600;color:var(--ink)}
 .hit .ref{font-family:var(--heb);font-size:.95rem;color:var(--muted)}
 .texts{margin-top:14px;border-top:1px solid var(--line);padding-top:4px}
-.srcs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;direction:rtl}
+.srcs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;direction:rtl}
+.hit .de{display:block;line-height:1.6;font-size:.95rem}
+.synth-all{margin-top:18px;border-top:1px solid var(--line);padding-top:4px;display:grid;gap:10px}
+.synth-all>p{margin:0}
+.synth-all .act{display:flex;flex-wrap:wrap;gap:8px}
+.synth-all .act button,.synth-all .act a{border:0;border-radius:10px;padding:9px 14px;font-weight:700;text-decoration:none;font-size:.95rem}
+.sa-text{font-size:1.05rem;line-height:1.6;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.sa-text p{margin:0 0 .7em}.sa-text p:last-child{margin:0}
+.sa-src{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.sa-src li{border-inline-start:3px solid var(--gold);padding-inline-start:10px}
+.sa-src b{font-family:var(--heb);font-size:1.05rem}
 .srcs button{display:grid;justify-items:center;gap:0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:6px 2px;min-width:0}
 .srcs .he{font-size:.98rem;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .srcs small{font-size:.75rem;color:var(--muted);direction:ltr}
@@ -474,6 +484,7 @@ function renderWord(raw,isExample){
   html+=`<details class="more"><summary>En savoir plus sur chaque lettre</summary><div class="cards">${cards}</div></details>`;
   html+=`<section class="assemble" id="assemble"></section>`;
   html+=`<section class="texts" id="texts"></section>`;
+  html+=`<section class="synth-all" id="synth-all"></section>`;
   out.innerHTML=html;
   CURRENT={raw,words,elems};
   renderVerdict(); renderTexts(words); renderNakdan(words);
@@ -669,13 +680,18 @@ const SEARCH=(()=>{
 
 /* ---------- Ce mot dans les textes ---------- */
 // Le livre et le תנ"ך sont cherchés tout de suite ; les autres textes, lourds, seulement une fois téléchargés.
+// mb : taille à télécharger ; les petits textes (moins de 1 Mo) sont téléchargés sans demander.
 const SOURCES=[
   {id:'livre',he:'ראש מילין',fr:'ce livre'},
   {id:'tanakh',he:'תנ״ך',fr:'la Bible'},
+  {id:'yetzirah',he:'ספר יצירה',fr:'version du גר״א, avec son commentaire',mb:0.3},
   {id:'zohar',he:'זהר',fr:'avec זהר חדש et תיקוני זהר',mb:21},
+  {id:'shaarei',he:'שערי אורה',fr:'Rabbi Yossef Gikatilla : les noms divins reliés aux ספירות',mb:0.9},
   {id:'nachman',he:'רבי נחמן',fr:'ליקוטי מוהר״ן, ספר המידות, סיפורי מעשיות, שיחות הר״ן',mb:7},
   {id:'natan',he:'רבי נתן',fr:'ליקוטי הלכות, ליקוטי תפילות, ליקוטי עצות, חיי מוהר״ן, שבחי הר״ן',mb:43},
+  {id:'hirsch',he:'הירש',fr:'Rav Samson Raphaël Hirsch, commentaire de la Torah (original allemand, 1903)',mb:9,ltr:true},
 ];
+const mbLabel=mb=>String(mb).replace('.',',')+' Mo';
 const FILTERS={same:['Même lecture','mêmes lettres et mêmes voyelles.'],exact:['Mêmes lettres','le mot écrit ainsi, quelle que soit sa lecture.'],all:['Avec préfixe','aussi quand une lettre est ajoutée devant le mot : <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans »…']};
 const consOf=s=>s.replace(/[^א-ת]/g,'');
 const vowOf=s=>s.normalize('NFD').replace(/[^א-תְ-ׇֻ]/g,'').replace(/ֺ/g,'ֹ').replace(/ׇ/g,'ָ');
@@ -688,7 +704,8 @@ function renderTexts(words){
   TX.st.livre={state:'done',...bookHits(words)};
   drawTexts();
   runSearch('tanakh');
-  ['zohar','nachman','natan'].forEach(id=>SEARCH('cached',{src:id}).then(ok=>{ if(q!==TXQ) return; if(ok) runSearch(id); else { TX.st[id]={state:'idle'}; drawTexts(); } }));
+  SOURCES.filter(x=>x.mb).forEach(x=>SEARCH('cached',{src:x.id}).then(ok=>{ if(q!==TXQ) return; if(ok||x.mb<1) runSearch(x.id); else { TX.st[x.id]={state:'idle'}; drawTexts(); } }));
+  renderSynthAll();
 }
 function runSearch(id){
   const q=TXQ, st=TX.st[id]={state:'run',prog:null}; drawTexts();
@@ -708,7 +725,7 @@ function loadPage(id){
 function srcCount(id){
   const st=TX.st[id];
   if(st.state==='done') return id==='livre'?(st.n>60?'60+':String(st.n)):String(st.sum.exact.n||st.sum.all.n);
-  if(st.state==='idle') return `${SOURCES.find(x=>x.id===id).mb} Mo`;
+  if(st.state==='idle') return mbLabel(SOURCES.find(x=>x.id===id).mb);
   if(st.state==='error') return '!';
   return '…';
 }
@@ -727,7 +744,7 @@ function drawBody(){
   const head=`<p class="src-fr">${S.fr}</p>`;
   if(id==='livre'){ body.innerHTML=head+st.html; return; }
   if(st.state==='idle'){
-    body.innerHTML=head+`<p class="status">Ces textes ne sont pas encore sur ce téléphone. Ils sont téléchargés une seule fois (${S.mb} Mo, en wifi de préférence) ; ensuite la recherche se fait toute seule, même sans internet.</p><div class="act"><button class="primary" data-get>Télécharger et chercher</button></div>`;
+    body.innerHTML=head+`<p class="status">Ces textes ne sont pas encore sur ce téléphone. Ils sont téléchargés une seule fois (${mbLabel(S.mb)}${S.mb>5?', en wifi de préférence':''}) ; ensuite la recherche se fait toute seule, même sans internet.</p><div class="act"><button class="primary" data-get>Télécharger et chercher</button></div>`;
     body.querySelector('[data-get]').onclick=()=>runSearch(id); return;
   }
   if(st.state==='error'){
@@ -744,7 +761,7 @@ function drawBody(){
   h+=`<p class="status">${FILTERS[st.f][0]} : ${FILTERS[st.f][1]}</p>`;
   const books=sum[st.f].books;
   if(Object.keys(books).length>1) h+=`<div class="tk-books" dir="rtl">${Object.keys(books).map(b=>`<span><b>${esc(b)}</b> ${books[b]}</span>`).join('')}</div>`;
-  h+=`<div class="hits">`+st.items.map(r=>`<div class="hit"><span class="ref">${esc(r.book)} ${esc(r.ref)}</span><span class="he" lang="he">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span></div>`).join('')+`</div>`;
+  h+=`<div class="hits">`+st.items.map(r=>`<div class="hit"><span class="ref">${esc(r.book)} ${esc(r.ref)}</span><span class="${S.ltr?'de':'he'}" lang="${S.ltr?'de':'he'}">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span></div>`).join('')+`</div>`;
   const left=sum[st.f].n-st.items.length;
   if(st.loading) h+=`<p class="status">Chargement…</p>`;
   else if(st.pageErr) h+=`<div class="act"><button class="ghost" data-more>Impossible de charger les passages. Réessayer</button></div>`;
@@ -753,6 +770,89 @@ function drawBody(){
   body.innerHTML=h;
   body.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ st.f=b.dataset.f; st.items=[]; st.pageErr=false; loadPage(id); });
   const m=body.querySelector('[data-more]'); if(m) m.onclick=()=>{ st.pageErr=false; loadPage(id); };
+}
+
+/* ---------- synthèse de toutes les explications ---------- */
+// Réunit l'explication par les lettres (Rav Kook) et les passages trouvés dans chaque texte.
+let SACTL=null;
+function renderSynthAll(){
+  const box=$('#synth-all'); if(!box) return;
+  box.innerHTML=`<h2 class="sec">Synthèse de toutes les explications</h2>
+    <p class="status">Claude réunit en une seule explication ce que disent les lettres selon le Rav Kook et les passages où ce mot apparaît dans les textes ci-dessus. Les textes pas encore téléchargés ne sont pas pris en compte.</p>
+    <div class="act"><button class="primary" id="sa-go">Faire la synthèse</button></div>`;
+  $('#sa-go').onclick=()=>runSynthAll(box);
+}
+async function synthMaterial(){
+  const q=TXQ, parts=[];
+  for(const S of SOURCES){
+    const st=TX.st[S.id], name=`${S.he} (${S.fr})`;
+    if(S.id==='livre'){ parts.push(`## ${name}\n`+(st.n?st.snips.map(x=>'- '+x).join('\n'):'Le mot n\'apparaît pas tel quel dans le livre.')); continue; }
+    if(st.state!=='done'){ parts.push(`## ${name}\nNon cherché (texte pas encore téléchargé).`); continue; }
+    const f=st.sum.exact.n?'exact':'all', n=st.sum[f].n;
+    if(!n){ parts.push(`## ${name}\nAucun passage.`); continue; }
+    let items=[]; try{ items=await SEARCH('page',{src:S.id,q,f,from:0,n:5}); }catch(e){}
+    parts.push(`## ${name}\n${n} passage${n>1?'s':''}${f==='all'?' (avec une lettre ajoutée devant le mot)':''}. Exemples :\n`+items.map(r=>`- ${r.book} ${r.ref} : ${r.pre}[${r.mark}]${r.post}`).join('\n'));
+  }
+  return parts.join('\n\n');
+}
+function synthPrompt(material,forJson){
+  const elems=[], seen=new Set();
+  CURRENT.elems.forEach(e=>{ if(seen.has(e.id)) return; seen.add(e.id); elems.push(`- ${e.name} : ${e.court}${e.fiche?' — '+e.fiche.phrase:''}`); });
+  const concl=$('.vtext')?$('.vtext').textContent:'';
+  const base=`Mot étudié :
+${CURRENT.raw.trim()}
+
+1. Ce que disent ses lettres selon le livre ראש מילין du Rav Kook (1917) :
+${structure()}
+Idée de chaque élément :
+${elems.join('\n')}
+${concl?'Conclusion déjà tirée des lettres : '+concl+'\n':''}
+2. Ce mot dans les textes (le mot cherché est entre crochets) :
+
+${material}
+
+Tâche : écris UNE seule explication de ce mot qui unit toutes ces approches : les lettres selon le Rav Kook, le sens du mot dans le תנ״ך, le ספר יצירה et le commentaire du גר״א, le זהר, le שערי אורה, les enseignements de רבי נחמן et de רבי נתן, et le commentaire de Hirsch (qui rapproche les racines aux sons proches). Montre ce qui les relie : une même idée vue sous plusieurs angles. Ne garde que ce qui s'appuie sur les passages donnés ; quand une source n'a rien, n'invente rien pour elle. Sépare clairement ce que disent les textes de ton interprétation.
+Écris en français très simple, pour n'importe qui : phrases courtes, mots de tous les jours, aucun mot savant ; pas de mot hébreu au milieu d'une phrase française et pas de translittération.`;
+  if(forJson) return base+`
+
+Réponds uniquement avec un objet JSON de cette forme :
+{"synthese": ["paragraphe", "paragraphe"], "apports": [{"source": "...", "idee": "..."}]}
+- "synthese" : deux à quatre paragraphes courts ; le premier dit l'idée qui unit tout en une ou deux phrases.
+- "apports" : pour chaque source qui a apporté quelque chose, une phrase qui dit ce qu'elle ajoute. "source" est son nom en caractères hébreux, tel qu'il est écrit plus haut.`;
+  return base+`
+
+Commence par l'idée qui unit tout, en une ou deux phrases. Ensuite, dis en une phrase ce qu'apporte chaque source.`;
+}
+async function runSynthAll(box){
+  box.querySelector('.act').innerHTML='<p class="vwait">Rassemblement des passages…</p>';
+  const material=await synthMaterial(); if(!box.isConnected) return;
+  const sample=await getSample(); if(!box.isConnected) return;
+  const head='<h2 class="sec">Synthèse de toutes les explications</h2>';
+  if(!sample){
+    const on=navigator.onLine;
+    box.innerHTML=head+`<p class="status">${on?'Ici, la synthèse se fait dans une conversation avec Claude : copie la demande et colle-la.':'Hors ligne : la synthèse demande une connexion.'}</p>${on?`<div class="act">${navigator.share?'<button class="primary" id="sa-share">Demander à Claude</button>':''}<button class="${navigator.share?'ghost':'primary'}" id="sa-copy">Copier la demande</button>${navigator.share?'':'<a class="ghost" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>'}</div><p class="status" id="sa-st"></p>`:''}`;
+    const t=synthPrompt(material,false), st=$('#sa-st');
+    const sh=$('#sa-share'); if(sh) sh.onclick=async()=>{ try{ await navigator.share({title:'ראש מילין',text:t}); }catch(e){ if(e.name!=='AbortError') st.textContent='Le partage n\'a pas fonctionné. Utilise « Copier la demande ».'; } };
+    const cp=$('#sa-copy'); if(cp) cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(t); st.textContent='Demande copiée. Colle-la dans une nouvelle conversation avec Claude.'; }catch(e){ st.textContent='La copie a été refusée.'; } };
+    return;
+  }
+  box.innerHTML=head+'<p class="vwait">Claude réunit toutes les explications… (ça peut prendre une minute)</p>';
+  if(SACTL) SACTL.abort(); SACTL=new AbortController(); const my=SACTL;
+  try{
+    const r=await sample.json(synthPrompt(material,true),{signal:my.signal,modelTier:'complex'});
+    if(my!==SACTL||!box.isConnected) return;
+    const paras=(Array.isArray(r.synthese)?r.synthese:[r.synthese||'']).filter(Boolean);
+    const ap=Array.isArray(r.apports)?r.apports.filter(x=>x&&x.idee):[];
+    box.innerHTML=head+`<div class="sa-text">${paras.map(x=>`<p>${esc(x)}</p>`).join('')}</div>
+      ${ap.length?`<ul class="sa-src">${ap.map(x=>`<li><b>${esc(x.source||'')}</b><br>${esc(x.idee)}</li>`).join('')}</ul>`:''}
+      <p class="vnote">Écrite par Claude à partir des lettres et des passages trouvés. Vérifie dans les passages ci-dessus.</p>
+      <div class="act"><button class="ghost" id="sa-go">Refaire la synthèse</button></div>`;
+    $('#sa-go').onclick=()=>runSynthAll(box);
+  }catch(e){
+    if(e&&e.code==='cancelled') return;
+    box.innerHTML=head+`<p class="vwait">${e&&e.code==='rate_limited'?'Trop de demandes pour le moment. Réessaie dans un instant.':'La synthèse n\'a pas pu être obtenue.'}</p><div class="act"><button class="primary" id="sa-go">Réessayer</button></div>`;
+    $('#sa-go').onclick=()=>runSynthAll(box);
+  }
 }
 
 /* ---------- Ce mot dans le livre ראש מילין ---------- */
@@ -770,14 +870,15 @@ function bookHits(words){
       if(res.length>60) break;
     }
   });
-  if(!res.length) return {n:0,html:'<p class="status">Ce mot n\'apparaît pas tel quel dans le texte du livre. L\'explication se lit donc à travers ses lettres, ci-dessus.</p>'};
+  const snips=res.slice(0,5).map(h=>h.sec.title.replace(/[״"#]/g,'').trim()+' : '+h.txt.slice(Math.max(0,h.i-150),h.i)+'['+h.txt.slice(h.i,h.i+h.len)+']'+h.txt.slice(h.i+h.len,h.i+h.len+150));
+  if(!res.length) return {n:0,snips,html:'<p class="status">Ce mot n\'apparaît pas tel quel dans le texte du livre. L\'explication se lit donc à travers ses lettres, ci-dessus.</p>'};
   const html=`<p class="status">${res.length>60?'Plus de 60':res.length} passage${res.length>1?'s':''}${res.length>25?', les 25 premiers affichés':''}.</p><div class="hits">`+res.slice(0,25).map(h=>{
     const a=Math.max(0,h.i-70), b=Math.min(h.txt.length,h.i+h.len+70);
     const pre=(a>0?'…':'')+esc(h.txt.slice(a,h.i)), mid=esc(h.txt.slice(h.i,h.i+h.len)), post=esc(h.txt.slice(h.i+h.len,b))+(b<h.txt.length?'…':'');
     const ttl=h.sec.title.replace(/[״"#]/g,'').trim();
     return `<div class="hit"><span class="ref">${esc(ttl)}</span><span class="he">${pre}<mark>${mid}</mark>${post}</span><button data-page="${h.sec.pdf[0]}">Voir la page ${h.sec.pdf[0]-2}</button></div>`;
   }).join('')+'</div>';
-  return {n:res.length,html};
+  return {n:res.length,snips,html};
 }
 
 /* ---------- palettes ---------- */
