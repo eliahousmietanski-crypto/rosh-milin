@@ -229,6 +229,10 @@ details.more[open]>summary{margin-bottom:10px}
 .build .bw{display:block;font-size:1.6rem;line-height:1.3;text-align:left}
 .build p{margin:2px 0 0}
 .bfin{font-weight:700;margin:12px 0 0}
+.vsens{margin:0;font-weight:700}
+.build p{margin:4px 0 0}
+.bcite{font-size:1.05rem;color:var(--muted)}
+.bpage{background:transparent;border:0;padding:0;margin-top:4px;text-decoration:underline;font-size:.8rem;color:var(--muted)}
 .nakdan:empty{display:none}
 .nakdan{margin-top:14px}
 .nhead{margin:0 0 8px;font-weight:700}
@@ -579,7 +583,8 @@ function structure(){
 }
 function buildPrompt(forJson){
   const raw=CURRENT.raw.trim();
-  const base=`Le livre ראש מילין du Rav Kook (1917) explique chaque lettre hébraïque, les lettres finales, les couronnes, les voyelles et les signes de cantillation comme des concepts.
+  const letters=CURRENT.words.map(w=>w.items.map(it=>it.ch).join(' ')).join(' / ');
+  const base=`Le livre ראש מילין du Rav Kook (1917) explique chaque lettre hébraïque, les lettres finales, les couronnes, les voyelles et les signes de cantillation comme des idées. Son principe : les lettres d'un mot montrent pourquoi ce mot veut dire ce qu'il veut dire.
 
 Mot étudié :
 ${raw}
@@ -587,34 +592,37 @@ ${raw}
 Ses éléments, dans l'ordre :
 ${structure()}
 
-Tâche : dire quelle idée nouvelle naît quand on met bout à bout les idées de ces éléments, dans cet ordre, puis ce que changent les voyelles (et les signes de chant ou les couronnes s'il y en a). Le livre ne compte que dix voyelles et ne parle pas des voyelles composées : une voyelle composée se lit comme l'éclair dans sa forme prononcée, coloré par la voyelle qui l'accompagne ; ne présente pas cette lecture comme venant du livre. Appuie-toi uniquement sur les passages du livre ci-dessous.
+Méthode, à suivre strictement :
+1. Pars du sens réel du mot, celui du dictionnaire (s'il en a plusieurs, donne les principaux). N'invente jamais un sens nouveau.
+2. Pour chaque lettre, dis ce que le livre dit d'elle, au plus près du texte, puis en quoi cela éclaire CE sens précis du mot. Si le lien n'est pas clair, dis-le franchement plutôt que de forcer.
+3. Ne crée aucune image ni comparaison qui n'est pas dans le livre. Pas de suite de métaphores. Chaque phrase doit pouvoir se vérifier dans les passages ci-dessous.
+4. Le livre ne compte que dix voyelles et ne parle pas des voyelles composées : une voyelle composée se lit comme l'éclair dans sa forme prononcée, colorée par la voyelle qui l'accompagne ; dis que cette lecture ne vient pas du livre.
 
-Le lecteur peut être n'importe qui, même un enfant de douze ans ou quelqu'un qui n'a pas fait d'études. Écris donc très simplement :
-- des phrases courtes, des mots de tous les jours ;
-- aucun mot savant ou philosophique (pas de « transcendance », « essence », « manifestation », « ontologique », « dialectique », etc.) ;
-- une image concrète de la vie de tous les jours quand ça aide ;
-- pas de poésie ni de formules vagues : chaque phrase doit dire quelque chose de précis.`;
+Écris pour n'importe qui : phrases courtes, mots de tous les jours, aucun mot savant ou philosophique, rien de vague.`;
   if(forJson) return base+`
 
 Réponds uniquement avec un objet JSON de cette forme :
-{"conclusion": "...", "assemblage": [{"lettres": "...", "texte": "..."}], "voyelles": "...", "fin": "..."}
-- "conclusion" : deux phrases courtes au maximum, en français très simple, qui disent l'idée du mot. C'est la seule chose que beaucoup de lecteurs liront : elle doit se comprendre du premier coup.
-- "assemblage" : montre comment le mot se construit, lettre après lettre. Une entrée par lettre, dans l'ordre. "lettres" contient le début du mot jusqu'à cette lettre incluse, en caractères hébreux, avec les voyelles telles qu'elles sont écrites dans le mot (par exemple pour un mot de trois lettres : la 1re lettre, puis les deux premières, puis le mot entier). "texte" : une ou deux phrases simples en français qui disent ce que cette lettre apporte et comment elle change ce qu'on avait jusque-là, d'après le livre.
-- "voyelles" : une ou deux phrases en français sur ce que les voyelles changent ; chaîne vide s'il n'y en a pas.
-- "fin" : une phrase qui reprend l'idée du mot entier, comme conclusion de l'assemblage.
-Dans "conclusion", "texte", "voyelles" et "fin" : aucun mot hébreu, aucune translittération en lettres latines.
+{"sens": ["..."], "lettres": [{"lettre": "...", "livre": "...", "citation": "...", "lien": "..."}], "voyelles": "...", "conclusion": "..."}
+- "sens" : le ou les sens réels du mot, en français, quelques mots chacun.
+- "lettres" : une entrée par lettre du mot, dans l'ordre (${letters}). "lettre" : la lettre en caractères hébreux. "livre" : une phrase qui dit ce que le livre dit de cette lettre. "citation" : quelques mots en hébreu RECOPIÉS EXACTEMENT des passages ci-dessous, qui le prouvent. "lien" : une phrase qui dit en quoi cela explique le sens du mot ; chaîne vide si le lien n'est pas clair.
+- "voyelles" : une ou deux phrases sur ce que les voyelles ajoutent ; chaîne vide s'il n'y en a pas.
+- "conclusion" : une ou deux phrases qui disent comment ces lettres, ensemble, expliquent le sens du mot.
+En dehors de "lettre" et "citation" : aucun mot hébreu, aucune translittération.
 
 Passages du livre :
 
 ${passages()}`;
   return base+`
 
-Présentation : commence par une conclusion de deux phrases courtes au maximum, qu'on comprend du premier coup. Ensuite, développe lettre par lettre. Termine par une partie « Comment ces lettres forment le mot » : construis le mot lettre après lettre, en disant à chaque fois ce que la nouvelle lettre ajoute à ce qu'on avait déjà. Réponds en français. Ne mets jamais de mot hébreu au milieu d'une phrase française : écris l'hébreu sur une ligne à part. N'écris pas l'hébreu en lettres latines. Sépare ce que dit le livre de ton interprétation.
+Présentation : donne d'abord le sens réel du mot. Puis, pour chaque lettre : ce que dit le livre (avec quelques mots cités en hébreu, sur une ligne à part) et en quoi cela explique ce sens. Termine par une conclusion d'une ou deux phrases. Réponds en français ; pas de mot hébreu au milieu d'une phrase française, pas de translittération.
 
 Passages du livre :
 
 ${passages()}`;
 }
+// garde une citation seulement si elle se trouve vraiment dans le passage du livre
+const normCite=t=>plainHeb(t).replace(/[^א-ת]+/g,' ').replace(/[ךםןףץ]/g,c=>({'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'}[c])).trim();
+function citeOk(c,e){ const n=normCite(c||''); if(n.split(' ').length<2) return false; return [e.main,e.brk].some(x=>x&&normCite(x.t).includes(n)); }
 async function renderVerdict(){
   const v=$('#verdict'); if(!v) return;
   v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vwait">Chargement…</p>`;
@@ -622,17 +630,25 @@ async function renderVerdict(){
   if(!$('#verdict')||v!==$('#verdict')) return;
   if(!sample){ renderShare(v); return; }
   if(CTL) CTL.abort(); CTL=new AbortController(); const my=CTL;
-  v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vwait">Claude réunit les idées des lettres…</p>`;
+  v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vwait">Claude relie les lettres au sens du mot…</p>`;
   try{
-    const r=await sample.json(buildPrompt(true),{signal:my.signal});
+    const r=await sample.json(buildPrompt(true),{signal:my.signal,modelTier:'complex'});
     if(my!==CTL) return;
-    const as=Array.isArray(r.assemblage)?r.assemblage:[];
-    v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vtext">${esc(r.conclusion||'')}</p>
-      <p class="vnote">Écrite par Claude à partir du livre. L'explication complète est en bas de la page.</p>`;
-    const A=$('#assemble');
-    if(A&&as.length){ A.innerHTML=`<h2 class="sec">Comment ces lettres forment le mot</h2><ol class="build">${as.map(x=>`<li><span class="he bw">${esc(x.lettres||'')}</span><p>${esc(x.texte||'')}</p></li>`).join('')}</ol>
-      ${r.voyelles?`<p class="vvoy"><i class="kdot k-nekuda"></i>${esc(r.voyelles)}</p>`:''}
-      ${r.fin?`<p class="bfin">${esc(r.fin)}</p>`:''}<p class="vnote">Écrit par Claude à partir des passages du livre.</p>`; }
+    const sens=(Array.isArray(r.sens)?r.sens:[r.sens]).filter(Boolean);
+    v.innerHTML=`<p class="vlabel">Conclusion</p>${sens.length?`<p class="vsens">Sens du mot : ${sens.map(esc).join(' ; ')}</p>`:''}<p class="vtext">${esc(r.conclusion||'')}</p>
+      <p class="vnote">Écrite par Claude à partir du livre. Le détail lettre par lettre, avec les citations, est plus bas.</p>`;
+    const A=$('#assemble'), items=CURRENT.words.flatMap(w=>w.items), ls=Array.isArray(r.lettres)?r.lettres:[];
+    if(A&&ls.length){
+      A.innerHTML=`<h2 class="sec">Comment les lettres expliquent le mot</h2><ol class="build">${ls.map((x,k)=>{
+        const it=items[k], e=it&&E[it.base], ok=e&&citeOk(x.citation,e), pdf=e&&(e.main||e.brk).pdf[0];
+        return `<li><span class="he bw">${esc(x.lettre||(it?it.ch:''))}</span>
+          <p><b>Le livre :</b> ${esc(x.livre||'')}</p>
+          ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>`:''}
+          <p><b>Pour ce mot :</b> ${x.lien?esc(x.lien):'<span class="status">pas de lien clair avec le sens du mot.</span>'}</p>
+          ${pdf?`<button class="bpage" data-page="${pdf}">Voir la page du livre</button>`:''}</li>`; }).join('')}</ol>
+        ${r.voyelles?`<p class="vvoy"><i class="kdot k-nekuda"></i>${esc(r.voyelles)}</p>`:''}
+        <p class="vnote">Écrit par Claude à partir des passages du livre. Les citations sont vérifiées : une citation introuvable dans le livre n'est pas affichée.</p>`;
+    }
   }catch(e){
     if(e&&e.code==='cancelled') return;
     if(e&&['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ renderShare(v); return; }
@@ -812,7 +828,7 @@ ${concl?'Conclusion déjà tirée des lettres : '+concl+'\n':''}
 
 ${material}
 
-Tâche : écris UNE seule explication de ce mot qui unit toutes ces approches : les lettres selon le Rav Kook, le sens du mot dans le תנ״ך, le ספר יצירה et le commentaire du גר״א, le midrash אותיות דרבי עקיבא, le זהר, le שערי אורה, les enseignements de רבי נחמן et de רבי נתן, et le commentaire de Hirsch (qui rapproche les racines aux sons proches). Montre ce qui les relie : une même idée vue sous plusieurs angles. Ne garde que ce qui s'appuie sur les passages donnés ; quand une source n'a rien, n'invente rien pour elle. Sépare clairement ce que disent les textes de ton interprétation.
+Tâche : pars du sens réel du mot (celui du dictionnaire ; n'invente aucun sens nouveau) et écris UNE seule explication de ce mot qui unit toutes ces approches : les lettres selon le Rav Kook, le sens du mot dans le תנ״ך, le ספר יצירה et le commentaire du גר״א, le midrash אותיות דרבי עקיבא, le זהר, le שערי אורה, les enseignements de רבי נחמן et de רבי נתן, et le commentaire de Hirsch (qui rapproche les racines aux sons proches). Montre ce qui les relie : une même idée vue sous plusieurs angles. Ne garde que ce qui s'appuie sur les passages donnés ; quand une source n'a rien, n'invente rien pour elle. Aucune image ni comparaison qui ne vient pas des textes. Sépare clairement ce que disent les textes de ton interprétation.
 Écris en français très simple, pour n'importe qui : phrases courtes, mots de tous les jours, aucun mot savant ; pas de mot hébreu au milieu d'une phrase française et pas de translittération.`;
   if(forJson) return base+`
 
