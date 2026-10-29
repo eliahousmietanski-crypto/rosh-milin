@@ -9,7 +9,7 @@ Format de sortie, un paragraphe par ligne : « référence<TAB>texte ».
 import sys, os, re, json, urllib.parse, urllib.request
 
 BASE = 'https://storage.googleapis.com/sefaria-export/json/'
-# fichier de sortie -> (chemin Sefaria, nom affiché, découpage éventuel par première section)
+# fichier de sortie -> (chemin Sefaria, nom affiché[, version à prendre au lieu de Hebrew/merged.json])
 BOOKS = [
     ('zohar', 'Kabbalah/Zohar/Zohar', 'זהר'),
     ('zohar_chadash', 'Kabbalah/Zohar/Zohar Chadash', 'זהר חדש'),
@@ -23,6 +23,12 @@ BOOKS = [
     ('likutei_halakhot', 'Chasidut/Breslov/Likutei Halakhot', 'ליקוטי הלכות'),
     ('likutei_tefilot', 'Chasidut/Breslov/Likutei Tefilot', 'ליקוטי תפילות'),
     ('likutei_etzot', 'Chasidut/Breslov/Likkutei Etzot', 'ליקוטי עצות'),
+    ('sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Sefer Yetzirah Gra Version', 'ספר יצירה'),
+    ('gra_sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Commentary/HaGra on Sefer Yetzirah Gra Version', 'פירוש הגר״א'),
+    ('shaarei_orah', "Kabbalah/Other Kabbalah Works/Sha'arei Orah", 'שערי אורה'),
+    # l'original allemand de 1903 (domaine public) : les mots hébreux y sont en lettres hébraïques
+    ('hirsch', 'Tanakh/Acharonim on Tanakh/Rav Hirsch on Torah', 'רש״ר הירש',
+     'English/Der Pentateuch. Übersetzt und erläutert von Samson Raphael Hirsch, 1903 [de].json'),
 ]
 SPLIT_AT = 12_000_000  # octets : un fichier plus gros est coupé à la première division du livre
 
@@ -86,18 +92,18 @@ def node(schema, text, path, out, talmud, state):
         walk(text, path, [], out, talmud, state)
 
 
-def load(dl, sefpath):
-    f = os.path.join(dl, sefpath.replace('/', '_') + '.json')
+def load(dl, sefpath, version='Hebrew/merged.json'):
+    f = os.path.join(dl, (sefpath + '/' + version).replace('/', '_'))
     if not os.path.exists(f):
-        urllib.request.urlretrieve(BASE + urllib.parse.quote(sefpath + '/Hebrew/merged.json'), f)
+        urllib.request.urlretrieve(BASE + urllib.parse.quote(sefpath + '/' + version), f)
     return json.load(open(f))
 
 
 def main(dl, outdir):
     os.makedirs(outdir, exist_ok=True)
     index = []
-    for name, sefpath, he in BOOKS:
-        d = load(dl, sefpath)
+    for name, sefpath, he, *version in BOOKS:
+        d = load(dl, sefpath, *version)
         talmud = (d.get('sectionNames') or [''])[0] == 'Daf'
         schema = d.get('schema')
         parts = []  # (suffixe, lignes)
@@ -125,7 +131,8 @@ def main(dl, outdir):
             with open(os.path.join(outdir, fn), 'w') as fh:
                 fh.write('\n'.join(lines) + '\n')
             names.append(fn)
-        index.append({'id': name, 'he': he, 'files': names, 'source': d.get('versions', [])})
+        index.append({'id': name, 'he': he, 'files': names,
+                      'source': d.get('versions') or [[d.get('versionTitle'), d.get('versionSource')]]})
         print(name, [os.path.getsize(os.path.join(outdir, n)) for n in names], file=sys.stderr)
     json.dump(index, open(os.path.join(outdir, 'index.json'), 'w'), ensure_ascii=False, indent=1)
 
