@@ -737,7 +737,7 @@ function drawTanakh(){
     }).join('');
     return `<div class="hit"><span class="ref">${BOOKS[r.vs.b]} ${gem(r.vs.c)}, ${gem(r.vs.v)}</span><span class="he" lang="he">${out}</span></div>`;
   }).join('');
-  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" id="tk-more">Afficher plus (${list.length-R.shown} restants)</button></div>`;
+  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" id="tk-more">Charger la suite (${list.length-R.shown} restants)</button></div>`;
   h+=`<p class="status">Texte : codex de Leningrad. Un mot entre ( ) est écrit ainsi ; le mot entre [ ] qui le suit est celui qu'on lit.</p>`;
   box.innerHTML=h; bindTk();
 }
@@ -779,10 +779,10 @@ async function searchCorpus(c,d,words){
       const t=await r.text(); if(!d.isConnected) return;
       re.lastIndex=0; let m;
       while((m=re.exec(t))){
-        const pre=m[1].length>0, k=cnt[he]||(cnt[he]={exact:0,all:0,kept:0});
+        // on ne garde que la position : le passage est découpé seulement quand il s'affiche
+        const pre=m[1].length>0, k=cnt[he]||(cnt[he]={exact:0,all:0});
         k.all++; if(!pre) k.exact++;
-        if(k.kept++<500){ const a=t.lastIndexOf('\n',m.index)+1, b=t.indexOf('\n',m.index), tab=t.indexOf('\t',a);
-          res.push({he,ref:t.slice(a,tab),txt:t.slice(tab+1,b<0?t.length:b),i:m.index-tab-1,len:m[0].length,pre}); }
+        res.push({he,f,p:m.index,len:m[0].length,pre});
       }
       done++;
     }
@@ -794,14 +794,25 @@ async function searchCorpus(c,d,words){
   CR[c.id]={res,cnt,f:res.some(r=>!r.pre)?'exact':'all',shown:30,c};
   drawCorpus(d);
 }
-function drawCorpus(d){
+let CTXT={f:null,t:''};
+async function passagesOf(hits){
+  for(const h of hits){
+    if(h.txt!=null) continue;
+    if(CTXT.f!==h.f){ const r=await fetch('corpus/'+h.f+'.txt'); if(!r.ok) throw 0; CTXT={f:h.f,t:await r.text()}; }
+    const t=CTXT.t, a=t.lastIndexOf('\n',h.p)+1, b=t.indexOf('\n',h.p), tab=t.indexOf('\t',a);
+    h.ref=t.slice(a,tab); h.txt=t.slice(tab+1,b<0?t.length:b); h.i=h.p-tab-1;
+  }
+}
+async function drawCorpus(d){
   const R=CR[d.dataset.corpus], box=d.querySelector('.cp'), n=d.querySelector('.cp-n');
-  const C=Object.values(R.cnt), exact=C.reduce((a,k)=>a+k.exact,0), all=C.reduce((a,k)=>a+k.all,0), more=C.some(k=>k.all>500);
+  const C=Object.values(R.cnt), exact=C.reduce((a,k)=>a+k.exact,0), all=C.reduce((a,k)=>a+k.all,0);
   if(n) n.textContent=all?`(${exact} fois${all>exact?`, ${all} avec préfixe`:''})`:'(aucune)';
   if(!all){ box.innerHTML='<p class="status">Ces lettres n\'apparaissent pas dans ces textes, même avec une lettre ajoutée devant.</p>'; return; }
   const list=R.res.filter(r=>R.f==='exact'?!r.pre:true);
+  try{ await passagesOf(list.slice(0,R.shown)); }catch(e){ R.shown=Math.max(30,R.shown-50); const b=box.querySelector('[data-cmore]'); if(b){ b.disabled=false; b.textContent='Impossible de charger la suite. Réessayer'; } return; }
+  if(!d.isConnected) return;
   const byBook={}; Object.entries(R.cnt).forEach(([b,k])=>{ const v=R.f==='exact'?k.exact:k.all; if(v) byBook[b]=v; });
-  let h=`<p class="status">Mêmes lettres : le mot écrit ainsi, avec ou sans voyelles. Avec préfixe : aussi quand une lettre est ajoutée devant le mot, comme <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans ». Dans un texte sans voyelles, une lettre du mot peut parfois passer pour un préfixe.${more?' Pour chaque livre, seuls les 500 premiers passages s\'affichent ; le décompte, lui, est complet.':''}</p>`;
+  let h=`<p class="status">Mêmes lettres : le mot écrit ainsi, avec ou sans voyelles. Avec préfixe : aussi quand une lettre est ajoutée devant le mot, comme <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans ». Dans un texte sans voyelles, une lettre du mot peut parfois passer pour un préfixe.</p>`;
   h+=`<div class="tk-filters">${exact?`<button data-cf="exact" aria-pressed="${R.f==='exact'}">Mêmes lettres · ${exact}</button>`:''}${all>exact?`<button data-cf="all" aria-pressed="${R.f==='all'}">Avec préfixe · ${all}</button>`:''}</div>`;
   h+=`<div class="tk-books" dir="rtl">${Object.keys(byBook).map(b=>`<span><b>${esc(b)}</b> ${byBook[b]}</span>`).join('')}</div>`;
   h+=list.slice(0,R.shown).map(r=>{
@@ -811,11 +822,11 @@ function drawCorpus(d){
     const post=b<r.txt.length?r.txt.slice(r.i+r.len,b).replace(/\s\S*$/,'')+'…':r.txt.slice(r.i+r.len);
     return `<div class="hit"><span class="ref">${esc(r.he)}, ${esc(r.ref)}</span><span class="he" lang="he">${esc(pre)}<mark>${esc(r.txt.substr(r.i,r.len))}</mark>${esc(post)}</span></div>`;
   }).join('');
-  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" data-cmore>Afficher plus (${list.length-R.shown} restants)</button></div>`;
+  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" data-cmore>Charger la suite (${list.length-R.shown} restants)</button></div>`;
   h+=`<p class="status">Textes : Sefaria (sefaria.org).</p>`;
   box.innerHTML=h;
   box.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{R.f=b.dataset.cf;R.shown=30;drawCorpus(d);});
-  const m=box.querySelector('[data-cmore]'); if(m) m.onclick=()=>{R.shown+=50;drawCorpus(d);};
+  const m=box.querySelector('[data-cmore]'); if(m) m.onclick=()=>{ m.disabled=true; m.textContent='Chargement…'; R.shown+=50; drawCorpus(d); };
 }
 
 /* ---------- palettes ---------- */
