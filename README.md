@@ -11,9 +11,10 @@ Sur Android (Chrome) : ouvrir le lien, menu ⋮ → « Installer l'application �
 | Fichier | Rôle |
 |---|---|
 | `index.html` | L'application |
+| `search.js` | La recherche dans le תנ"ך, le זהר et les livres de Breslov, dans un fil à part pour que l'écran ne fige pas |
 | `data.json` | Le texte du livre découpé par élément, et les résumés |
 | `pages/` | Les 144 pages scannées |
-| `sw.js` | Fonctionnement hors ligne |
+| `sw.js` | Fonctionnement hors ligne (les textes, eux, sont gardés par `search.js`) |
 | `source/rosh-milin.txt` | Le texte complet retranscrit, page par page |
 | `tanakh.txt` | Le texte du תנ"ך (codex de Leningrad), un verset par ligne, pour trouver les occurrences d'un mot |
 | `source/build_tanakh.py` | Fabrique `tanakh.txt` depuis les fichiers OSIS d'Open Scriptures |
