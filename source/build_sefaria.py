@@ -5,6 +5,8 @@ Usage : python3 build_sefaria.py <dossier de téléchargement> <dossier corpus d
 Les fichiers JSON manquants sont téléchargés dans le dossier de téléchargement.
 
 Format de sortie, un paragraphe par ligne : « référence<TAB>texte ».
+À côté de chaque fichier, un fichier .refs donne pour chaque ligne la référence Sefaria
+(par exemple « Zohar, Bereshit.1.5 ») : l'application en fait un lien vers le texte original.
 """
 import sys, os, re, json, urllib.parse, urllib.request
 
@@ -59,8 +61,8 @@ def clean(t):
     return re.sub(r'\s+', ' ', t).strip()
 
 
-def walk(text, path, nums, out, talmud, state):
-    """text : liste imbriquée ; nums : indices des niveaux déjà traversés."""
+def walk(text, path, nums, out, talmud, state, en):
+    """text : liste imbriquée ; nums : indices des niveaux déjà traversés ; en : référence Sefaria du nœud."""
     if isinstance(text, str):
         m = VILNA.findall(text)
         page = state.get('page')
@@ -78,20 +80,21 @@ def walk(text, path, nums, out, talmud, state):
             ref += (', ' if ref else '') + ' '.join([first] + [gem(n + 1) for n in nums[1:]])
         if page:
             ref += f' (דף {page})'
-        out.append(ref + '\t' + t)
+        addr = '.'.join([(f'{nums[0] // 2 + 1}{"ab"[nums[0] % 2]}' if talmud else str(nums[0] + 1))] + [str(n + 1) for n in nums[1:]]) if nums else ''
+        out.append((ref + '\t' + t, en + ('.' + addr if addr else '')))
         return
     for i, x in enumerate(text or []):
-        walk(x, path, nums + [i], out, talmud, state)
+        walk(x, path, nums + [i], out, talmud, state, en)
 
 
-def node(schema, text, path, out, talmud, state):
+def node(schema, text, path, out, talmud, state, en):
     if schema and schema.get('nodes'):
         for n in schema['nodes']:
             key = n.get('key') or n.get('enTitle') or ''
             sub = text.get(key, text.get('', [])) if isinstance(text, dict) else []
-            node(n, sub, path + [n.get('heTitle', '')], out, talmud, state)
+            node(n, sub, path + [n.get('heTitle', '')], out, talmud, state, en + (', ' + key if key else ''))
     else:
-        walk(text, path, [], out, talmud, state)
+        walk(text, path, [], out, talmud, state, en)
 
 
 def load(dl, sefpath, version='Hebrew/merged.json'):
@@ -113,16 +116,16 @@ def main(dl, outdir):
             for n in schema['nodes']:
                 out = []
                 key = n.get('key') or n.get('enTitle') or ''
-                node(n, d['text'].get(key, []), [n.get('heTitle', '')], out, talmud, {})
+                node(n, d['text'].get(key, []), [n.get('heTitle', '')], out, talmud, {}, d['title'] + (', ' + key if key else ''))
                 parts.append(out)
         else:
             out = []
-            walk(d['text'], [], [], out, talmud, {})
+            walk(d['text'], [], [], out, talmud, {}, d['title'])
             parts.append(out)
         # regroupe les divisions en fichiers de taille raisonnable
         files, cur, size = [], [], 0
         for p in parts:
-            s = sum(len(l.encode()) + 1 for l in p)
+            s = sum(len(l.encode()) + 1 for l, _ in p)
             if cur and size + s > SPLIT_AT:
                 files.append(cur); cur, size = [], 0
             cur += p; size += s
@@ -131,7 +134,9 @@ def main(dl, outdir):
         for i, lines in enumerate(files):
             fn = name + (f'_{i + 1}' if len(files) > 1 else '') + '.txt'
             with open(os.path.join(outdir, fn), 'w') as fh:
-                fh.write('\n'.join(lines) + '\n')
+                fh.write('\n'.join(l for l, _ in lines) + '\n')
+            with open(os.path.join(outdir, fn[:-4] + '.refs'), 'w') as fh:
+                fh.write('\n'.join(r for _, r in lines) + '\n')
             names.append(fn)
         index.append({'id': name, 'he': he, 'files': names,
                       'source': d.get('versions') or [[d.get('versionTitle'), d.get('versionSource')]]})
