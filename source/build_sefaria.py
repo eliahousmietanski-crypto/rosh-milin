@@ -23,7 +23,9 @@ BOOKS = [
     ('likutei_halakhot', 'Chasidut/Breslov/Likutei Halakhot', 'ליקוטי הלכות'),
     ('likutei_tefilot', 'Chasidut/Breslov/Likutei Tefilot', 'ליקוטי תפילות'),
     ('likutei_etzot', 'Chasidut/Breslov/Likkutei Etzot', 'ליקוטי עצות'),
-    ('sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Sefer Yetzirah Gra Version', 'ספר יצירה'),
+    # uniquement la version du גר״א, édition de Varsovie 1884 (pas la version de Kaplan ni les autres)
+    ('sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Sefer Yetzirah Gra Version', 'ספר יצירה',
+     'Hebrew/Sefer Yetzirah, Warsaw 1884.json'),
     ('gra_sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Commentary/HaGra on Sefer Yetzirah Gra Version', 'פירוש הגר״א'),
     ('rasag_sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Commentary/Rasag on Sefer Yetzirah', 'פירוש רס״ג'),
     ('shaarei_orah', "Kabbalah/Other Kabbalah Works/Sha'arei Orah", 'שערי אורה'),
