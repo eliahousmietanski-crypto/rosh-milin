@@ -25,6 +25,7 @@ BOOKS = [
     ('likutei_etzot', 'Chasidut/Breslov/Likkutei Etzot', 'ליקוטי עצות'),
     ('sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Sefer Yetzirah Gra Version', 'ספר יצירה'),
     ('gra_sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Commentary/HaGra on Sefer Yetzirah Gra Version', 'פירוש הגר״א'),
+    ('rasag_sefer_yetzirah', 'Kabbalah/Sefer Yetzirah/Commentary/Rasag on Sefer Yetzirah', 'פירוש רס״ג'),
     ('shaarei_orah', "Kabbalah/Other Kabbalah Works/Sha'arei Orah", 'שערי אורה'),
     # l'original allemand de 1903 (domaine public) : les mots hébreux y sont en lettres hébraïques
     ('hirsch', 'Tanakh/Acharonim on Tanakh/Rav Hirsch on Torah', 'רש״ר הירש',
