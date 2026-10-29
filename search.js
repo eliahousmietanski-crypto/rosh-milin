@@ -10,7 +10,7 @@ const BOOKS=['בראשית','שמות','ויקרא','במדבר','דברים','�
 const CORPORA={
   zohar:[['זהר',['zohar_1','zohar_2']],['זהר חדש',['zohar_chadash']],['תיקוני זהר',['tikkunei_zohar']]],
   nachman:[['ליקוטי מוהר״ן',['likutei_moharan']],['ספר המידות',['sefer_hamidot']],['סיפורי מעשיות',['sipurei_maasiyot']],['שיחות הר״ן',['sichot_haran']]],
-  yetzirah:[['ספר יצירה',['sefer_yetzirah']],['פירוש הגר״א',['gra_sefer_yetzirah']],['פירוש רס״ג',['rasag_sefer_yetzirah']]],
+  yetzirah:[['ספר יצירה',['sefer_yetzirah']],['פירוש הגר״א',['gra_sefer_yetzirah']]],
   shaarei:[['שערי אורה',['shaarei_orah']]],
   hirsch:[['רש״ר הירש',['hirsch']]],
   natan:[['ליקוטי הלכות',['likutei_halakhot_1','likutei_halakhot_2','likutei_halakhot_3','likutei_halakhot_4']],['ליקוטי תפילות',['likutei_tefilot']],['ליקוטי עצות',['likutei_etzot']],['חיי מוהר״ן',['chayei_moharan']],['שבחי הר״ן',['shivchei_haran']]],
