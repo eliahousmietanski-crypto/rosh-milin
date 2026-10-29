@@ -187,6 +187,31 @@ details.more[open]>summary{margin-bottom:10px}
 .court{font-weight:600;font-size:.98rem}
 .tog{margin-inline-start:auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;font-size:1.3rem;line-height:1;flex:none}
 .card{padding:10px 12px}
+
+.phrase{font-weight:700;font-size:1.05rem;margin:10px 0 6px}
+.points{margin:0;padding-inline-start:18px;display:grid;gap:6px;font-size:.96rem}
+.cite{font-size:1.15rem;margin:8px 0 0;color:var(--kc)}
+.image{margin-top:10px;background:var(--gold-soft);border-radius:10px;padding:8px 10px}
+.image .ilabel{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);font-weight:700}
+.image p{margin:2px 0 0}
+.assemble:empty{display:none}
+.assemble{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:4px 14px 14px;margin-top:14px}
+.build{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.build li{border-inline-start:3px solid var(--gold);padding-inline-start:10px}
+.build .bw{display:block;font-size:1.6rem;line-height:1.3;text-align:left}
+.build p{margin:2px 0 0}
+.bfin{font-weight:700;margin:12px 0 0}
+.nakdan:empty{display:none}
+.nakdan{margin-top:14px}
+.nhead{margin:0 0 8px;font-weight:700}
+.nlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.nopt{display:grid;justify-items:center;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;text-align:center}
+.nopt .nw{font-size:1.6rem;line-height:1.3}
+.nopt .ns{font-size:.85rem}
+.nopt .ng{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.nbtn{border:1px solid var(--line)!important;border-radius:10px;padding:8px 12px;font-weight:600;background:transparent}
+.nakdan .act{display:flex;gap:8px;margin-top:6px}
+.nakdan .act button{border-radius:10px;padding:8px 12px;font-weight:600}
 /* parcourir */
 .bsec{margin-block:18px}
 .bsec h3{font-size:.95rem;margin:0 0 8px}
@@ -331,6 +356,13 @@ function textBlock(sec,label){
   const paras=sec.t.split('\n').filter(Boolean).map(x=>`<p>${esc(x)}</p>`).join('');
   return `${paras}<span class="src">${label}, ${pagesLabel(sec.p)} du livre</span>`;
 }
+function ficheHtml(e){
+  const F=e.fiche; if(!F) return `<p class="idea">${esc(e.simple||'')}</p>`;
+  return `<p class="phrase">${esc(F.phrase)}</p>
+    <ul class="points">${F.points.map(p=>`<li><b>${esc(p.t)}.</b> ${esc(p.x)}</li>`).join('')}</ul>
+    ${F.cite?`<p class="cite he">${esc(F.cite)}</p>`:''}
+    <div class="image"><span class="ilabel">Image pour comprendre (pas dans le livre)</span><p>${esc(F.image)}</p></div>`;
+}
 function card(e,{sub=false,pos='',extraNote='',glyph=''}={}){
   const id='c'+Math.random().toString(36).slice(2,8);
   const g=glyph||(e.kind==='letter'||e.kind==='final'?e.id:(e.kind==='tag'?(e.id.startsWith('תג-')?e.id.slice(3):'תג'):''));
@@ -346,7 +378,7 @@ function card(e,{sub=false,pos='',extraNote='',glyph=''}={}){
       <button class="tog" data-tog="${id}" aria-expanded="false" aria-label="Afficher le détail">+</button>
     </div>
     <div class="cbody">
-    <p class="idea">${esc(e.simple)}</p>
+    ${ficheHtml(e)}
     ${extraNote?`<p class="note">${extraNote}</p>`:''}
     <div class="btns">${btns.join('')}</div>
     <div class="txt he" data-t="${id}" hidden></div>
@@ -389,6 +421,7 @@ function renderWord(raw,isExample){
   const named=DB.entries.find(e=>plainHeb(e.name)===pq||e.id===pq||plainHeb(e.name).replace('מונח','מנח')===pq.replace('מונח','מנח'));
   const elems=[];
   // 1. conclusion
+  html+=`<section class="nakdan" id="nakdan"></section>`;
   html+=`<section class="concl">${isExample?'<p class="example">Exemple</p>':''}`;
   words.forEach(w=>{
     html+=`<div class="word-head"><span class="he" lang="he">${esc(w.full)}</span></div>`;
@@ -420,12 +453,63 @@ function renderWord(raw,isExample){
     w.extra.forEach(id=>{ const T=E[id]; elems.push(T); cards+=card(T,{pos:'à la fin du mot',glyph:id==='פסיק'?'׀':'׃'}); });
   });
   html+=`<details class="more"><summary>En savoir plus sur chaque lettre</summary><div class="cards">${cards}</div></details>`;
+  html+=`<section class="assemble" id="assemble"></section>`;
   html+=`<details class="more" id="more-hits"><summary>Ce mot dans le livre <span id="hits-n"></span></summary><div id="hits" class="hits"></div></details>`;
   out.innerHTML=html;
   CURRENT={raw,words,elems};
-  renderVerdict(); renderHits(words);
+  renderVerdict(); renderHits(words); renderNakdan(words);
 }
 let CURRENT=null;
+
+
+/* ---------- nakdan ---------- */
+let NCTL=null;
+function hasNikud(w){ return /[ְ-ׇּׁׂ]/.test(w.full.normalize('NFD')); }
+function nakdanPrompt(plain){
+  return `Tu es un נקדן : tu proposes les façons de vocaliser un mot hébreu écrit sans voyelles.
+
+Mot :
+${plain}
+
+Donne toutes les lectures qui existent vraiment pour ces lettres exactes, en hébreu biblique, rabbinique ou moderne : noms, verbes conjugués (à toutes les personnes et tous les temps possibles), adjectifs, mots avec préfixe ou suffixe s'ils sont courants. N'invente aucune forme qui n'existe pas. Mets les lectures les plus courantes en premier. Au maximum 15.
+
+Réponds uniquement avec un tableau JSON de cette forme :
+[{"mot": "...", "sens": "...", "genre": "..."}]
+- "mot" : le mot avec toutes ses voyelles, en caractères hébreux.
+- "sens" : le sens en français très simple, en quelques mots, sans aucun mot hébreu ni translittération.
+- "genre" : "nom", "verbe", "adjectif" ou "autre".`;
+}
+async function renderNakdan(words){
+  const box=$('#nakdan'); if(!box) return;
+  if(words.length!==1){ box.innerHTML=''; return; }
+  const w=words[0]; const plain=w.plain; const auto=!hasNikud(w);
+  const head=auto?'Ce mot n\'a pas de voyelles. Il peut se lire de plusieurs façons :':'D\'autres façons de lire ces lettres :';
+  if(!auto){ box.innerHTML=`<button class="ghost nbtn" id="n-go">Voir toutes les façons de lire ces lettres</button>`; $('#n-go').onclick=()=>runNakdan(box,plain,head); return; }
+  runNakdan(box,plain,head);
+}
+async function runNakdan(box,plain,head){
+  box.innerHTML=`<p class="nhead">${head}</p><p class="vwait">Recherche des lectures possibles…</p>`;
+  const sample=await getSample();
+  if(!box.isConnected) return;
+  if(!sample){
+    box.innerHTML=`<p class="nhead">${head}</p><p class="vwait">${navigator.onLine?'Le נקדן demande Claude.':'Hors ligne : le נקדן demande une connexion.'}</p>${navigator.onLine?'<div class="act"><button class="ghost" id="n-copy">Copier la demande pour Claude</button></div><p class="status" id="n-st"></p>':''}`;
+    const c=$('#n-copy'); if(c) c.onclick=async()=>{ try{ await navigator.clipboard.writeText(nakdanPrompt(plain).replace(/Réponds uniquement avec un tableau JSON[\s\S]*/,'Présente le résultat dans un tableau : le mot vocalisé, son sens en français simple.')); $('#n-st').textContent='Demande copiée. Colle-la dans une conversation avec Claude.'; }catch(e){ $('#n-st').textContent='Copie refusée.'; } };
+    return;
+  }
+  if(NCTL) NCTL.abort(); NCTL=new AbortController(); const my=NCTL;
+  try{
+    const arr=await sample.json(nakdanPrompt(plain),{signal:my.signal});
+    if(my!==NCTL||!box.isConnected) return;
+    const list=(Array.isArray(arr)?arr:[]).filter(x=>x&&x.mot&&plainHeb(x.mot)===plainHeb(plain));
+    if(!list.length){ box.innerHTML=`<p class="nhead">${head}</p><p class="vwait">Aucune lecture trouvée.</p>`; return; }
+    box.innerHTML=`<p class="nhead">${head}</p><div class="nlist">${list.map((x,i)=>`<button class="nopt" data-nk="${i}"><span class="he nw">${esc(x.mot)}</span><span class="ns">${esc(x.sens||'')}</span><span class="ng">${esc(x.genre||'')}</span></button>`).join('')}</div><p class="vnote">Choisis une lecture pour voir ce que disent ses lettres et ses voyelles. Lectures proposées par Claude : vérifie-les.</p>`;
+    box.querySelectorAll('[data-nk]').forEach(b=>b.onclick=()=>{ const m=list[+b.dataset.nk].mot; $('#q').value=m; try{localStorage.setItem('rm-last',m);}catch(e){} renderWord(m,false); window.scrollTo({top:0}); });
+  }catch(e){
+    if(e&&e.code==='cancelled') return;
+    box.innerHTML=`<p class="nhead">${head}</p><p class="vwait">${e&&['not_granted','sampling_disabled'].includes(e.code)?'Le נקדן demande l\'autorisation d\'utiliser Claude.':'Les lectures n\'ont pas pu être obtenues.'}</p><div class="act"><button class="ghost" id="n-retry">Réessayer</button></div>`;
+    $('#n-retry').onclick=()=>runNakdan(box,plain,head);
+  }
+}
 
 /* ---------- conclusion ---------- */
 let SAMPLE_P=null, CTL=null;
@@ -473,18 +557,19 @@ Le lecteur peut être n'importe qui, même un enfant de douze ans ou quelqu'un q
   if(forJson) return base+`
 
 Réponds uniquement avec un objet JSON de cette forme :
-{"conclusion": "...", "etapes": [{"element": "...", "apport": "..."}], "voyelles": "..."}
+{"conclusion": "...", "assemblage": [{"lettres": "...", "texte": "..."}], "voyelles": "...", "fin": "..."}
 - "conclusion" : deux phrases courtes au maximum, en français très simple, qui disent l'idée du mot. C'est la seule chose que beaucoup de lecteurs liront : elle doit se comprendre du premier coup.
-- "etapes" : une entrée par lettre, dans l'ordre. "element" contient seulement le nom hébreu de la lettre, en caractères hébreux. "apport" : une phrase courte et simple en français qui dit ce que cette lettre ajoute, d'après le livre.
+- "assemblage" : montre comment le mot se construit, lettre après lettre. Une entrée par lettre, dans l'ordre. "lettres" contient le début du mot jusqu'à cette lettre incluse, en caractères hébreux, avec les voyelles telles qu'elles sont écrites dans le mot (par exemple pour un mot de trois lettres : la 1re lettre, puis les deux premières, puis le mot entier). "texte" : une ou deux phrases simples en français qui disent ce que cette lettre apporte et comment elle change ce qu'on avait jusque-là, d'après le livre.
 - "voyelles" : une ou deux phrases en français sur ce que les voyelles changent ; chaîne vide s'il n'y en a pas.
-Dans "conclusion", "apport" et "voyelles" : aucun mot hébreu, aucune translittération en lettres latines.
+- "fin" : une phrase qui reprend l'idée du mot entier, comme conclusion de l'assemblage.
+Dans "conclusion", "texte", "voyelles" et "fin" : aucun mot hébreu, aucune translittération en lettres latines.
 
 Passages du livre :
 
 ${passages()}`;
   return base+`
 
-Présentation : commence par une conclusion de deux phrases courtes au maximum, qu'on comprend du premier coup. Ensuite seulement, développe lettre par lettre, de préférence dans un tableau. Réponds en français. Ne mets jamais de mot hébreu au milieu d'une phrase française : écris l'hébreu sur une ligne à part. N'écris pas l'hébreu en lettres latines. Sépare ce que dit le livre de ton interprétation.
+Présentation : commence par une conclusion de deux phrases courtes au maximum, qu'on comprend du premier coup. Ensuite, développe lettre par lettre. Termine par une partie « Comment ces lettres forment le mot » : construis le mot lettre après lettre, en disant à chaque fois ce que la nouvelle lettre ajoute à ce qu'on avait déjà. Réponds en français. Ne mets jamais de mot hébreu au milieu d'une phrase française : écris l'hébreu sur une ligne à part. N'écris pas l'hébreu en lettres latines. Sépare ce que dit le livre de ton interprétation.
 
 Passages du livre :
 
@@ -501,11 +586,13 @@ async function renderVerdict(){
   try{
     const r=await sample.json(buildPrompt(true),{signal:my.signal});
     if(my!==CTL) return;
-    const et=Array.isArray(r.etapes)?r.etapes:[];
+    const as=Array.isArray(r.assemblage)?r.assemblage:[];
     v.innerHTML=`<p class="vlabel">Conclusion</p><p class="vtext">${esc(r.conclusion||'')}</p>
+      <p class="vnote">Écrite par Claude à partir du livre. L'explication complète est en bas de la page.</p>`;
+    const A=$('#assemble');
+    if(A&&as.length){ A.innerHTML=`<h2 class="sec">Comment ces lettres forment le mot</h2><ol class="build">${as.map(x=>`<li><span class="he bw">${esc(x.lettres||'')}</span><p>${esc(x.texte||'')}</p></li>`).join('')}</ol>
       ${r.voyelles?`<p class="vvoy"><i class="kdot k-nekuda"></i>${esc(r.voyelles)}</p>`:''}
-      ${et.length?`<details class="vdet"><summary>Lettre par lettre</summary><table class="ov"><tbody>${et.map(x=>`<tr><td class="el"><span class="he">${esc(x.element||'')}</span></td><td>${esc(x.apport||'')}</td></tr>`).join('')}</tbody></table></details>`:''}
-      <p class="vnote">Conclusion écrite par Claude à partir du livre.</p>`;
+      ${r.fin?`<p class="bfin">${esc(r.fin)}</p>`:''}<p class="vnote">Écrit par Claude à partir des passages du livre.</p>`; }
   }catch(e){
     if(e&&e.code==='cancelled') return;
     if(e&&['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ renderShare(v); return; }
