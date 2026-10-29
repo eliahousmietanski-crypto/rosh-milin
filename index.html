@@ -162,6 +162,18 @@ table.ov tr.letter-row:first-child td{border-top:0}
 .tk-books{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.85rem;color:var(--muted)}
 .tk-books b{font-family:var(--heb);font-weight:600;color:var(--ink)}
 .hit .ref{font-family:var(--heb);font-size:.95rem;color:var(--muted)}
+.texts{margin-top:14px;border-top:1px solid var(--line);padding-top:4px}
+.srcs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;direction:rtl}
+.srcs button{display:grid;justify-items:center;gap:0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:6px 2px;min-width:0}
+.srcs .he{font-size:.98rem;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.srcs small{font-size:.75rem;color:var(--muted);direction:ltr}
+.srcs button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.srcs button[aria-selected="true"] small{color:var(--paper);opacity:.8}
+.src-body{display:grid;gap:8px;margin-top:10px}
+.src-body>p{margin:0}
+.src-fr{font-size:.85rem;color:var(--muted)}
+.src-body .act{display:flex;gap:8px}
+.src-body .act button{border-radius:10px;padding:9px 14px;font-weight:700}
 
 
 /* conclusion */
@@ -461,12 +473,10 @@ function renderWord(raw,isExample){
   });
   html+=`<details class="more"><summary>En savoir plus sur chaque lettre</summary><div class="cards">${cards}</div></details>`;
   html+=`<section class="assemble" id="assemble"></section>`;
-  html+=`<details class="more" id="more-hits"><summary>Ce mot dans le livre <span id="hits-n"></span></summary><div id="hits" class="hits"></div></details>`;
-  html+=`<details class="more" id="more-tk"><summary>Ce mot dans le תנ״ך <span id="tk-n"></span></summary><div id="tk" class="hits"></div></details>`;
-  CORPORA.forEach(c=>{ html+=`<details class="more" data-corpus="${c.id}"><summary>Ce mot dans ${c.title} <span class="cp-n"></span></summary><div class="hits cp"></div></details>`; });
+  html+=`<section class="texts" id="texts"></section>`;
   out.innerHTML=html;
   CURRENT={raw,words,elems};
-  renderVerdict(); renderHits(words); renderTanakh(words); renderNakdan(words); bindCorpora(words);
+  renderVerdict(); renderTexts(words); renderNakdan(words);
 }
 let CURRENT=null;
 
@@ -636,197 +646,138 @@ window.addEventListener('online',()=>{netState(); if($('#s-copy')||$('.vwait')) 
 window.addEventListener('offline',()=>{netState();});
 function netState(){ const n=$('#net'); n.classList.toggle('off',!navigator.onLine); n.querySelector('span').textContent=navigator.onLine?'En ligne':'Hors ligne'; }
 
-/* ---------- occurrences ---------- */
+/* ---------- recherche : client du moteur (search.js) ---------- */
+const SEARCH=(()=>{
+  let w=null, n=0, local=null; const pend={};
+  const viaLocal=m=>{
+    local=local||new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='search.js'; sc.onload=()=>res(window.SearchCore); sc.onerror=rej; document.head.appendChild(sc); });
+    local.then(C=>C[m.type](m,p=>pend[m.id]&&pend[m.id].onp&&pend[m.id].onp(p))).then(r=>{const p=pend[m.id];delete pend[m.id];p&&p.res(r);},e=>{const p=pend[m.id];delete pend[m.id];p&&p.rej(e);});
+  };
+  try{
+    w=new Worker('search.js');
+    w.onmessage=e=>{ const m=e.data, p=pend[m.id]; if(!p) return;
+      if('progress' in m){ p.onp&&p.onp(m.progress); return; }
+      delete pend[m.id]; m.ok?p.res(m.r):p.rej(new Error(m.e)); };
+    // si le Worker ne démarre pas, la recherche se fait dans la page
+    w.onerror=()=>{ w=null; Object.values(pend).forEach(p=>viaLocal(p.m)); };
+  }catch(e){ w=null; }
+  return (type,args={},onp)=>new Promise((res,rej)=>{
+    const m={id:++n,type,...args}; pend[m.id]={res,rej,onp,m};
+    if(w) w.postMessage(m); else viaLocal(m);
+  });
+})();
+
+/* ---------- Ce mot dans les textes ---------- */
+// Le livre et le תנ"ך sont cherchés tout de suite ; les autres textes, lourds, seulement une fois téléchargés.
+const SOURCES=[
+  {id:'livre',he:'ראש מילין',fr:'ce livre'},
+  {id:'tanakh',he:'תנ״ך',fr:'la Bible'},
+  {id:'zohar',he:'זהר',fr:'avec זהר חדש et תיקוני זהר',mb:21},
+  {id:'nachman',he:'רבי נחמן',fr:'ליקוטי מוהר״ן, ספר המידות, סיפורי מעשיות, שיחות הר״ן',mb:7},
+  {id:'natan',he:'רבי נתן',fr:'ליקוטי הלכות, ליקוטי תפילות, ליקוטי עצות, חיי מוהר״ן, שבחי הר״ן',mb:43},
+];
+const FILTERS={same:['Même lecture','mêmes lettres et mêmes voyelles.'],exact:['Mêmes lettres','le mot écrit ainsi, quelle que soit sa lecture.'],all:['Avec préfixe','aussi quand une lettre est ajoutée devant le mot : <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans »…']};
+const consOf=s=>s.replace(/[^א-ת]/g,'');
+const vowOf=s=>s.normalize('NFD').replace(/[^א-תְ-ׇֻ]/g,'').replace(/ֺ/g,'ֹ').replace(/ׇ/g,'ָ');
+let TX=null, TXQ=0;
+function renderTexts(words){
+  const q=++TXQ;
+  let sel='tanakh'; try{ sel=localStorage.getItem('rm-src')||sel; }catch(e){}
+  TX={q,words:words.map(w=>({c:consOf(w.plain),v:hasNikud(w)?vowOf(w.full):null})),sel,st:{}};
+  SOURCES.forEach(x=>TX.st[x.id]={state:'wait'});
+  TX.st.livre={state:'done',...bookHits(words)};
+  drawTexts();
+  runSearch('tanakh');
+  ['zohar','nachman','natan'].forEach(id=>SEARCH('cached',{src:id}).then(ok=>{ if(q!==TXQ) return; if(ok) runSearch(id); else { TX.st[id]={state:'idle'}; drawTexts(); } }));
+}
+function runSearch(id){
+  const q=TXQ, st=TX.st[id]={state:'run',prog:null}; drawTexts();
+  if(id!=='tanakh') try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
+  SEARCH('search',{src:id,q,words:TX.words},p=>{ if(q!==TXQ) return; st.prog=p; if(TX.sel===id) drawBody(); })
+    .then(sum=>{ if(q!==TXQ) return;
+      const f=sum.same&&sum.same.n?'same':sum.exact.n?'exact':'all';
+      TX.st[id]={state:'done',sum,f,items:[],more:false}; drawTexts(); if(TX.sel===id) loadPage(id); })
+    .catch(e=>{ if(q!==TXQ||/stale/.test(e.message)) return; TX.st[id]={state:'error'}; drawTexts(); });
+}
+function loadPage(id){
+  const q=TXQ, st=TX.st[id]; if(st.loading) return; st.loading=true; drawBody();
+  SEARCH('page',{src:id,q,f:st.f,from:st.items.length,n:st.items.length?50:30})
+    .then(items=>{ if(q!==TXQ) return; st.loading=false; st.items.push(...items); drawBody(); })
+    .catch(e=>{ if(q!==TXQ) return; st.loading=false; st.pageErr=true; drawBody(); });
+}
+function srcCount(id){
+  const st=TX.st[id];
+  if(st.state==='done') return id==='livre'?(st.n>60?'60+':String(st.n)):String(st.sum.exact.n||st.sum.all.n);
+  if(st.state==='idle') return `${SOURCES.find(x=>x.id===id).mb} Mo`;
+  if(st.state==='error') return '!';
+  return '…';
+}
+function drawTexts(){
+  const box=$('#texts'); if(!box||!TX) return;
+  box.innerHTML=`<h2 class="sec">Ce mot dans les textes</h2>
+    <div class="srcs" role="tablist">${SOURCES.map(x=>`<button role="tab" data-src="${x.id}" aria-selected="${TX.sel===x.id}"><span class="he">${x.he}</span><small>${srcCount(x.id)}</small></button>`).join('')}</div>
+    <div class="src-body" id="src-body" role="tabpanel"></div>`;
+  box.querySelectorAll('[data-src]').forEach(b=>b.onclick=()=>{ TX.sel=b.dataset.src; try{localStorage.setItem('rm-src',TX.sel);}catch(e){} drawTexts();
+    const st=TX.st[TX.sel]; if(st.state==='done'&&TX.sel!=='livre'&&!st.items.length) loadPage(TX.sel); });
+  drawBody();
+}
+function drawBody(){
+  const body=$('#src-body'); if(!body) return;
+  const id=TX.sel, S=SOURCES.find(x=>x.id===id), st=TX.st[id];
+  const head=`<p class="src-fr">${S.fr}</p>`;
+  if(id==='livre'){ body.innerHTML=head+st.html; return; }
+  if(st.state==='idle'){
+    body.innerHTML=head+`<p class="status">Ces textes ne sont pas encore sur ce téléphone. Ils sont téléchargés une seule fois (${S.mb} Mo, en wifi de préférence) ; ensuite la recherche se fait toute seule, même sans internet.</p><div class="act"><button class="primary" data-get>Télécharger et chercher</button></div>`;
+    body.querySelector('[data-get]').onclick=()=>runSearch(id); return;
+  }
+  if(st.state==='error'){
+    body.innerHTML=head+`<p class="status">${navigator.onLine?'Le texte n\'a pas pu être chargé.':'Hors ligne : ces textes seront disponibles après un premier téléchargement en ligne.'}</p><div class="act"><button class="ghost" data-retry>Réessayer</button></div>`;
+    body.querySelector('[data-retry]').onclick=()=>runSearch(id); return;
+  }
+  if(st.state!=='done'){
+    const p=st.prog; body.innerHTML=head+`<p class="status">${p?`Recherche… ${p.done+1}/${p.total} · <bdi>${esc(p.book)}</bdi>`:'Recherche…'}</p>`; return;
+  }
+  const sum=st.sum;
+  if(!sum.all.n){ body.innerHTML=head+'<p class="status">Ces lettres n\'apparaissent pas dans ces textes, même avec une lettre ajoutée devant.</p>'; return; }
+  const fs=['same','exact','all'].filter(f=>sum[f]&&sum[f].n&&!(f==='all'&&sum.all.n===sum.exact.n));
+  let h=head+`<div class="tk-filters">${fs.map(f=>`<button data-f="${f}" aria-pressed="${st.f===f}">${FILTERS[f][0]} · ${sum[f].n}</button>`).join('')}</div>`;
+  h+=`<p class="status">${FILTERS[st.f][0]} : ${FILTERS[st.f][1]}</p>`;
+  const books=sum[st.f].books;
+  if(Object.keys(books).length>1) h+=`<div class="tk-books" dir="rtl">${Object.keys(books).map(b=>`<span><b>${esc(b)}</b> ${books[b]}</span>`).join('')}</div>`;
+  h+=`<div class="hits">`+st.items.map(r=>`<div class="hit"><span class="ref">${esc(r.book)} ${esc(r.ref)}</span><span class="he" lang="he">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span></div>`).join('')+`</div>`;
+  const left=sum[st.f].n-st.items.length;
+  if(st.loading) h+=`<p class="status">Chargement…</p>`;
+  else if(st.pageErr) h+=`<div class="act"><button class="ghost" data-more>Impossible de charger les passages. Réessayer</button></div>`;
+  else if(left>0) h+=`<div class="act"><button class="ghost" data-more>Charger la suite (${left} restants)</button></div>`;
+  h+=`<p class="status">${id==='tanakh'?'Texte : codex de Leningrad. Un mot entre ( ) est écrit ainsi ; le mot entre [ ] qui le suit est celui qu\'on lit.':'Textes : Sefaria (sefaria.org).'}</p>`;
+  body.innerHTML=h;
+  body.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ st.f=b.dataset.f; st.items=[]; st.pageErr=false; loadPage(id); });
+  const m=body.querySelector('[data-more]'); if(m) m.onclick=()=>{ st.pageErr=false; loadPage(id); };
+}
+
+/* ---------- Ce mot dans le livre ראש מילין ---------- */
 const PFX=new Set(['','ו','ה','ב','ל','מ','ש','כ','וה','וב','ול','ומ','וש','וכ','שה','שב','של','שמ','מה','בה','לה','כה','ומה','ושה','שבה','ובה','ולה','מש','כש','וכש','ומש']);
-function renderHits(words){
-  const box=$('#hits'); const res=[];
-  const targets=words.map(w=>w.plain.replace(/[ךםןףץ]$/,c=>c));
-  const norm=t=>plainHeb(t);
+function bookHits(words){
+  const res=[], targets=words.map(w=>w.plain);
   DB.full.forEach(sec=>{
     const txt=sec.t.replace(/\n/g,' ');
     const re=/[א-תְ-ׇ״׳"]+/g; let m;
     while((m=re.exec(txt))){
-      const tok=norm(m[0]);
+      const tok=plainHeb(m[0]);
       for(const t of targets){
         if(tok.endsWith(t)&&PFX.has(tok.slice(0,tok.length-t.length))){ res.push({sec,txt,i:m.index,len:m[0].length}); break; }
       }
       if(res.length>60) break;
     }
   });
-  const hn=$('#hits-n'); if(hn) hn.textContent=res.length?`(${res.length>60?'60+':res.length})`:'(aucun passage)';
-  if(!res.length){ box.innerHTML='<p class="status">Ce mot n\'apparaît pas tel quel dans le texte du livre. L\'explication se lit donc à travers ses lettres, ci-dessus.</p>'; return; }
-  const shown=res.slice(0,25);
-  box.innerHTML=`<p class="status">${res.length>60?'Plus de 60':res.length} passage${res.length>1?'s':''}${res.length>25?', les 25 premiers affichés':''}.</p>`+shown.map(h=>{
+  if(!res.length) return {n:0,html:'<p class="status">Ce mot n\'apparaît pas tel quel dans le texte du livre. L\'explication se lit donc à travers ses lettres, ci-dessus.</p>'};
+  const html=`<p class="status">${res.length>60?'Plus de 60':res.length} passage${res.length>1?'s':''}${res.length>25?', les 25 premiers affichés':''}.</p><div class="hits">`+res.slice(0,25).map(h=>{
     const a=Math.max(0,h.i-70), b=Math.min(h.txt.length,h.i+h.len+70);
     const pre=(a>0?'…':'')+esc(h.txt.slice(a,h.i)), mid=esc(h.txt.slice(h.i,h.i+h.len)), post=esc(h.txt.slice(h.i+h.len,b))+(b<h.txt.length?'…':'');
     const ttl=h.sec.title.replace(/[״"#]/g,'').trim();
-    return `<div class="hit"><span class="he">${pre}<mark>${mid}</mark>${post}</span><small><span class="he" style="font-size:.9rem">${esc(ttl)}</span></small><button data-page="${h.sec.pdf[0]}">Voir la page ${h.sec.pdf[0]-2}</button></div>`;
-  }).join('');
-}
-
-/* ---------- occurrences dans le תנ"ך ---------- */
-const BOOKS=['בראשית','שמות','ויקרא','במדבר','דברים','יהושע','שופטים','שמואל א','שמואל ב','מלכים א','מלכים ב','ישעיהו','ירמיהו','יחזקאל','הושע','יואל','עמוס','עובדיה','יונה','מיכה','נחום','חבקוק','צפניה','חגי','זכריה','מלאכי','תהלים','משלי','איוב','שיר השירים','רות','איכה','קהלת','אסתר','דניאל','עזרא','נחמיה','דברי הימים א','דברי הימים ב'];
-let TK=null, TKP=null;
-const consOf=s=>s.replace(/[^א-ת]/g,'');
-const vowOf=s=>s.normalize('NFD').replace(/[^א-תְ-ׇֻ]/g,'').replace(/ֺ/g,'ֹ').replace(/ׇ/g,'ָ');
-function gem(n){
-  let s=''; for(const [v,c] of [[400,'ת'],[300,'ש'],[200,'ר'],[100,'ק']]) while(n>=v){s+=c;n-=v;}
-  if(n===15) return s+'טו'; if(n===16) return s+'טז';
-  return s+(n>=10?'יכלמנסעפצ'[Math.floor(n/10)-1]:'')+(n%10?'אבגדהוזחט'[n%10-1]:'');
-}
-function loadTanakh(){
-  if(!TKP) TKP=fetch('tanakh.txt').then(r=>{ if(!r.ok) throw 0; return r.text(); }).then(t=>{
-    TK=t.split('\n').filter(Boolean).map(l=>{
-      const [ref,txt]=l.split('\t'); const [b,c,v]=ref.split(' ').map(Number);
-      // chaque mot : lettres sans préfixe, lettres avec préfixe, voyelles ; le כתיב et le קרי comptent tous les deux
-      const toks=txt.split(/[ ־]+/).filter(x=>/[א-ת]/.test(x)).map(x=>{
-        const y=x.replace(/[()[\]׃]/g,''); const i=y.indexOf('/');
-        return {base:consOf(i<0?y:y.slice(i+1)),full:consOf(y),vow:vowOf(y.replace('/','')),pre:i>0};
-      });
-      return {b,c,v,txt,toks};
-    });
-  }).catch(e=>{TKP=null;throw e;});
-  return TKP;
-}
-let TKR=null;
-async function renderTanakh(words){
-  const box=$('#tk'), n=$('#tk-n'); if(!box) return;
-  box.innerHTML='<p class="status">Recherche dans le תנ״ך…</p>';
-  try{ await loadTanakh(); }catch(e){
-    if(n) n.textContent='';
-    box.innerHTML=`<p class="status">${navigator.onLine?'Le texte du תנ״ך n\'a pas pu être chargé.':'Hors ligne : le texte du תנ״ך sera disponible après une première ouverture en ligne.'}</p><div class="act"><button class="ghost" id="tk-retry">Réessayer</button></div>`;
-    $('#tk-retry').onclick=()=>renderTanakh(words); return;
-  }
-  if(!CURRENT||CURRENT.words!==words) return;
-  const tw=words.map(w=>({c:consOf(w.plain),v:hasNikud(w)?vowOf(w.full):null}));
-  const withV=tw.some(t=>t.v);
-  const res=[];
-  for(const vs of TK){
-    const T=vs.toks;
-    for(let i=0;i+tw.length<=T.length;i++){
-      let ok=true, same=true, pre=false;
-      for(let k=0;k<tw.length&&ok;k++){
-        const x=T[i+k], t=tw[k];
-        if(x.full===t.c){ if(t.v&&x.vow!==t.v) same=false; }
-        else if(k===0&&x.pre&&x.base===t.c){ pre=true; if(t.v&&!x.vow.endsWith(t.v)) same=false; }
-        else ok=false;
-      }
-      if(ok){ res.push({vs,i,pre,same:withV&&same}); }
-    }
-  }
-  TKR={res,withV,len:tw.length,f:withV&&res.some(r=>r.same&&!r.pre)?'same':(res.some(r=>!r.pre)?'exact':'all'),shown:30};
-  drawTanakh();
-}
-function drawTanakh(){
-  const box=$('#tk'), n=$('#tk-n'), R=TKR; if(!box||!R) return;
-  const cnt={same:R.res.filter(r=>r.same&&!r.pre).length, exact:R.res.filter(r=>!r.pre).length, all:R.res.length};
-  if(n) n.innerHTML=cnt.all?`(${cnt.exact} fois${cnt.all>cnt.exact?`, ${cnt.all} avec préfixe`:''})`:'(aucune)';
-  if(!cnt.all){ box.innerHTML='<p class="status">Ces lettres ne forment aucun mot du תנ״ך, même avec une lettre ajoutée devant (<bdi>ו, ה, ב, כ, ל, מ, ש</bdi>).</p>'; return; }
-  const list=R.res.filter(r=>R.f==='same'?(r.same&&!r.pre):R.f==='exact'?!r.pre:true);
-  const fb=(k,label)=>cnt[k]?`<button data-tkf="${k}" aria-pressed="${R.f===k}">${label} · ${cnt[k]}</button>`:'';
-  const byBook={}; list.forEach(r=>{byBook[r.vs.b]=(byBook[r.vs.b]||0)+1;});
-  let h=`<p class="status">${R.withV?'Même lecture : mêmes lettres et mêmes voyelles. ':''}Mêmes lettres : le mot écrit ainsi, quelle que soit sa lecture. Avec préfixe : aussi quand une lettre est ajoutée devant le mot, comme <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans ».</p>`;
-  h+=`<div class="tk-filters">${R.withV?fb('same','Même lecture'):''}${fb('exact','Mêmes lettres')}${cnt.all>cnt.exact?fb('all','Avec préfixe'):''}</div>`;
-  if(!list.length){ box.innerHTML=h+'<p class="status">Aucun passage pour ce choix.</p>'; bindTk(); return; }
-  h+=`<div class="tk-books" dir="rtl">${Object.keys(byBook).map(b=>`<span><b>${BOOKS[b]}</b> ${byBook[b]}</span>`).join('')}</div>`;
-  h+=list.slice(0,R.shown).map(r=>{
-    let k=-1; const parts=r.vs.txt.split(/([ ־]+)/);
-    const out=parts.map(p=>{
-      if(!/[א-ת]/.test(p)) return esc(p);
-      k++; const t=esc(p.replace('/','')); return k>=r.i&&k<r.i+R.len?`<mark>${t}</mark>`:t;
-    }).join('');
-    return `<div class="hit"><span class="ref">${BOOKS[r.vs.b]} ${gem(r.vs.c)}, ${gem(r.vs.v)}</span><span class="he" lang="he">${out}</span></div>`;
-  }).join('');
-  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" id="tk-more">Charger la suite (${list.length-R.shown} restants)</button></div>`;
-  h+=`<p class="status">Texte : codex de Leningrad. Un mot entre ( ) est écrit ainsi ; le mot entre [ ] qui le suit est celui qu'on lit.</p>`;
-  box.innerHTML=h; bindTk();
-}
-function bindTk(){
-  document.querySelectorAll('[data-tkf]').forEach(b=>b.onclick=()=>{TKR.f=b.dataset.tkf;TKR.shown=30;drawTanakh();});
-  const m=$('#tk-more'); if(m) m.onclick=()=>{TKR.shown+=50;drawTanakh();};
-}
-
-/* ---------- זהר et livres de Breslov ---------- */
-// Les textes sont gros : chaque ensemble n'est téléchargé que quand on ouvre son panneau.
-const CORPORA=[
-  {id:'zohar',title:'le זהר',books:[['זהר',['zohar_1','zohar_2']],['זהר חדש',['zohar_chadash']],['תיקוני זהר',['tikkunei_zohar']]]},
-  {id:'nachman',title:'les livres de רבי נחמן',books:[['ליקוטי מוהר״ן',['likutei_moharan']],['ספר המידות',['sefer_hamidot']],['סיפורי מעשיות',['sipurei_maasiyot']],['שיחות הר״ן',['sichot_haran']]]},
-  {id:'natan',title:'les livres de רבי נתן',books:[['ליקוטי הלכות',['likutei_halakhot_1','likutei_halakhot_2','likutei_halakhot_3','likutei_halakhot_4']],['ליקוטי תפילות',['likutei_tefilot']],['ליקוטי עצות',['likutei_etzot']],['חיי מוהר״ן',['chayei_moharan']],['שבחי הר״ן',['shivchei_haran']]]},
-];
-const CSIZE={zohar:21,nachman:7,natan:43};
-const MK='[֑-ׇֽֿׁׂׅׄ]*';
-function corpusRe(words){
-  const w=words.map(x=>[...consOf(x.plain)].map(l=>l+MK).join(''));
-  return new RegExp(`(?<![א-ת֑-ׇ])((?:[ובהלמשכ]${MK}){0,3}?)(${w.join('[\\s־]+')})(?![א-ת֑-ׇׅ])`,'g');
-}
-const CR={};
-function bindCorpora(words){
-  document.querySelectorAll('[data-corpus]').forEach(d=>{
-    const c=CORPORA.find(x=>x.id===d.dataset.corpus);
-    const box=d.querySelector('.cp');
-    box.innerHTML=`<p class="status">Ouvre ce panneau pour chercher. La première fois, ${CSIZE[c.id]} Mo de texte sont téléchargés ; ensuite tout reste dans l'application.</p>`;
-    d.addEventListener('toggle',()=>{ if(d.open&&!d._done){ d._done=true; searchCorpus(c,d,words); } });
-  });
-}
-async function searchCorpus(c,d,words){
-  const box=d.querySelector('.cp'), n=d.querySelector('.cp-n');
-  const re=corpusRe(words); const res=[], cnt={}; let done=0;
-  const files=c.books.flatMap(([he,fs])=>fs.map(f=>[he,f]));
-  try{
-    for(const [he,f] of files){
-      box.innerHTML=`<p class="status">Recherche… ${done}/${files.length} (${esc(he)})</p>`;
-      const r=await fetch('corpus/'+f+'.txt'); if(!r.ok) throw 0;
-      const t=await r.text(); if(!d.isConnected) return;
-      re.lastIndex=0; let m;
-      while((m=re.exec(t))){
-        // on ne garde que la position : le passage est découpé seulement quand il s'affiche
-        const pre=m[1].length>0, k=cnt[he]||(cnt[he]={exact:0,all:0});
-        k.all++; if(!pre) k.exact++;
-        res.push({he,f,p:m.index,len:m[0].length,pre});
-      }
-      done++;
-    }
-  }catch(e){
-    d._done=false; if(n) n.textContent='';
-    box.innerHTML=`<p class="status">${navigator.onLine?'Le texte n\'a pas pu être chargé.':'Hors ligne : ces textes seront disponibles après une première recherche en ligne.'}</p><div class="act"><button class="ghost" data-cretry>Réessayer</button></div>`;
-    box.querySelector('[data-cretry]').onclick=()=>{d._done=true;searchCorpus(c,d,words);}; return;
-  }
-  CR[c.id]={res,cnt,f:res.some(r=>!r.pre)?'exact':'all',shown:30,c};
-  drawCorpus(d);
-}
-let CTXT={f:null,t:''};
-async function passagesOf(hits){
-  for(const h of hits){
-    if(h.txt!=null) continue;
-    if(CTXT.f!==h.f){ const r=await fetch('corpus/'+h.f+'.txt'); if(!r.ok) throw 0; CTXT={f:h.f,t:await r.text()}; }
-    const t=CTXT.t, a=t.lastIndexOf('\n',h.p)+1, b=t.indexOf('\n',h.p), tab=t.indexOf('\t',a);
-    h.ref=t.slice(a,tab); h.txt=t.slice(tab+1,b<0?t.length:b); h.i=h.p-tab-1;
-  }
-}
-async function drawCorpus(d){
-  const R=CR[d.dataset.corpus], box=d.querySelector('.cp'), n=d.querySelector('.cp-n');
-  const C=Object.values(R.cnt), exact=C.reduce((a,k)=>a+k.exact,0), all=C.reduce((a,k)=>a+k.all,0);
-  if(n) n.textContent=all?`(${exact} fois${all>exact?`, ${all} avec préfixe`:''})`:'(aucune)';
-  if(!all){ box.innerHTML='<p class="status">Ces lettres n\'apparaissent pas dans ces textes, même avec une lettre ajoutée devant.</p>'; return; }
-  const list=R.res.filter(r=>R.f==='exact'?!r.pre:true);
-  try{ await passagesOf(list.slice(0,R.shown)); }catch(e){ R.shown=Math.max(30,R.shown-50); const b=box.querySelector('[data-cmore]'); if(b){ b.disabled=false; b.textContent='Impossible de charger la suite. Réessayer'; } return; }
-  if(!d.isConnected) return;
-  const byBook={}; Object.entries(R.cnt).forEach(([b,k])=>{ const v=R.f==='exact'?k.exact:k.all; if(v) byBook[b]=v; });
-  let h=`<p class="status">Mêmes lettres : le mot écrit ainsi, avec ou sans voyelles. Avec préfixe : aussi quand une lettre est ajoutée devant le mot, comme <bdi>ו</bdi> « et », <bdi>ה</bdi> « le », <bdi>ב</bdi> « dans ». Dans un texte sans voyelles, une lettre du mot peut parfois passer pour un préfixe.</p>`;
-  h+=`<div class="tk-filters">${exact?`<button data-cf="exact" aria-pressed="${R.f==='exact'}">Mêmes lettres · ${exact}</button>`:''}${all>exact?`<button data-cf="all" aria-pressed="${R.f==='all'}">Avec préfixe · ${all}</button>`:''}</div>`;
-  h+=`<div class="tk-books" dir="rtl">${Object.keys(byBook).map(b=>`<span><b>${esc(b)}</b> ${byBook[b]}</span>`).join('')}</div>`;
-  h+=list.slice(0,R.shown).map(r=>{
-    const a=Math.max(0,r.i-90), b=Math.min(r.txt.length,r.i+r.len+90);
-    const sp=x=>{ const k=x.indexOf(' '); return k<0?x:x.slice(k); };
-    const pre=a>0?'…'+sp(r.txt.slice(a,r.i)).trimStart():r.txt.slice(0,r.i);
-    const post=b<r.txt.length?r.txt.slice(r.i+r.len,b).replace(/\s\S*$/,'')+'…':r.txt.slice(r.i+r.len);
-    return `<div class="hit"><span class="ref">${esc(r.he)}, ${esc(r.ref)}</span><span class="he" lang="he">${esc(pre)}<mark>${esc(r.txt.substr(r.i,r.len))}</mark>${esc(post)}</span></div>`;
-  }).join('');
-  if(list.length>R.shown) h+=`<div class="act"><button class="ghost" data-cmore>Charger la suite (${list.length-R.shown} restants)</button></div>`;
-  h+=`<p class="status">Textes : Sefaria (sefaria.org).</p>`;
-  box.innerHTML=h;
-  box.querySelectorAll('[data-cf]').forEach(b=>b.onclick=()=>{R.f=b.dataset.cf;R.shown=30;drawCorpus(d);});
-  const m=box.querySelector('[data-cmore]'); if(m) m.onclick=()=>{ m.disabled=true; m.textContent='Chargement…'; R.shown+=50; drawCorpus(d); };
+    return `<div class="hit"><span class="ref">${esc(ttl)}</span><span class="he">${pre}<mark>${mid}</mark>${post}</span><button data-page="${h.sec.pdf[0]}">Voir la page ${h.sec.pdf[0]-2}</button></div>`;
+  }).join('')+'</div>';
+  return {n:res.length,html};
 }
 
 /* ---------- palettes ---------- */

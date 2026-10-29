@@ -1,5 +1,7 @@
-const V='rosh-milin-v9';
-const CORE=['./','index.html','data.json','manifest.webmanifest','icon-192.png','icon-512.png'];
+const V='rosh-milin-v10';
+const FONTS='https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap';
+const TEXTS='rosh-milin-texts'; // rempli par search.js, gardé d'une version à l'autre
+const CORE=['./','index.html','search.js','data.json','manifest.webmanifest','icon-192.png','icon-512.png'];
 const PAGES=[
   'pages/001.jpg',
   'pages/002.jpg',
@@ -145,13 +147,14 @@ const PAGES=[
   'pages/142.jpg',
   'pages/143.jpg',
   'pages/144.jpg'];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(async c=>{await c.addAll(CORE);try{await c.addAll(PAGES);}catch(_){} try{await c.add('tanakh.txt');}catch(_){}}));self.skipWaiting();});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V).map(k=>caches.delete(k)))));self.clients.claim();});
+self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(async c=>{await c.addAll(CORE);try{await c.addAll(PAGES);}catch(_){} try{await c.add(new Request(FONTS,{mode:'cors'}));}catch(_){}}));self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==V&&k!==TEXTS).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',e=>{
   const u=new URL(e.request.url); if(e.request.method!=='GET') return;
+  if(u.pathname.endsWith('/tanakh.txt')||u.pathname.includes('/corpus/')) return; // search.js s'en charge
   if(u.origin===location.origin){
     // pages et images : cache d'abord ; index et données : réseau d'abord pour recevoir les mises à jour
-    if(/\.(jpg|png)$/.test(u.pathname)||u.pathname.endsWith("/tanakh.txt")||u.pathname.includes("/corpus/")) e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;})));
+    if(/\.(jpg|png)$/.test(u.pathname)) e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;})));
     else e.respondWith(fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||caches.match('index.html'))));
   } else if(/fonts\.(googleapis|gstatic)\.com$/.test(u.hostname)){
     e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{const cl=res.clone();caches.open(V).then(c=>c.put(e.request,cl));return res;})));
