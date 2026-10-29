@@ -174,6 +174,12 @@ table.ov tr.letter-row:first-child td{border-top:0}
 .sa-src{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .sa-src li{border-inline-start:3px solid var(--gold);padding-inline-start:10px}
 .sa-src b{font-family:var(--heb);font-size:1.05rem}
+.sref{display:inline-block;font-size:.72rem;font-weight:700;line-height:1;vertical-align:super;margin:0 1px;padding:2px 5px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--gold);text-decoration:none}
+.sa-h{font-size:.85rem;margin:6px 0 0}
+.sa-list{margin:0;padding-inline-start:26px;display:grid;gap:6px;font-size:.88rem}
+.sa-list a{color:var(--muted)}
+.hit a.ref{text-decoration:none;display:block}
+bdi.he{font-family:var(--heb)}
 .srcs button{display:grid;justify-items:center;gap:0;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:6px 2px;min-width:0}
 .srcs .he{font-size:.98rem;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .srcs small{font-size:.75rem;color:var(--muted);direction:ltr}
@@ -607,18 +613,32 @@ Réponds uniquement avec un objet JSON de cette forme :
 - "lettres" : une entrée par lettre du mot, dans l'ordre (${letters}). "lettre" : la lettre en caractères hébreux. "livre" : une phrase qui dit ce que le livre dit de cette lettre. "citation" : quelques mots en hébreu RECOPIÉS EXACTEMENT des passages ci-dessous, qui le prouvent. "lien" : une phrase qui dit en quoi cela explique le sens du mot ; chaîne vide si le lien n'est pas clair.
 - "voyelles" : une ou deux phrases sur ce que les voyelles ajoutent ; chaîne vide s'il n'y en a pas.
 - "conclusion" : une ou deux phrases qui disent comment ces lettres, ensemble, expliquent le sens du mot.
-En dehors de "lettre" et "citation" : aucun mot hébreu, aucune translittération.
+Quand tu parles d'un autre mot (par exemple un mot qui s'écrit presque pareil), écris-le en lettres hébraïques et dis ce qu'il veut dire. Jamais de translittération en lettres latines.
 
 Passages du livre :
 
 ${passages()}`;
   return base+`
 
-Présentation : donne d'abord le sens réel du mot. Puis, pour chaque lettre : ce que dit le livre (avec quelques mots cités en hébreu, sur une ligne à part) et en quoi cela explique ce sens. Termine par une conclusion d'une ou deux phrases. Réponds en français ; pas de mot hébreu au milieu d'une phrase française, pas de translittération.
+Présentation : donne d'abord le sens réel du mot. Puis, pour chaque lettre : ce que dit le livre (avec quelques mots cités en hébreu, sur une ligne à part) et en quoi cela explique ce sens. Termine par une conclusion d'une ou deux phrases. Réponds en français. Quand tu parles d'un autre mot, écris-le en lettres hébraïques et dis ce qu'il veut dire ; jamais de translittération.
 
 Passages du livre :
 
 ${passages()}`;
+}
+// Texte français de Claude : chaque suite de mots hébreux est isolée (<bdi>) pour ne pas
+// renverser l'ordre de la ligne ; « [3] » devient un lien vers la source n° 3.
+const HE_RUN=/[\u0590-\u05FF](?:[\u0590-\u05FF"'\u05F3\u05F4\u05BE-]|\s(?=[\u0590-\u05FF]))*/g;   // des mots hébreux séparés par une virgule restent séparés
+function rich(t,srcs){
+  let out='', last=0; t=String(t||'');
+  const re=new RegExp(HE_RUN.source+'|\\[(\\d+)\\]','g'); let m;
+  while((m=re.exec(t))){
+    out+=esc(t.slice(last,m.index)); last=re.lastIndex;
+    if(m[1]){ const S=srcs&&srcs[+m[1]-1];
+      out+=!S?'':S.page?`<button class="sref" data-page="${S.page}">${m[1]}</button>`:`<a class="sref" href="${esc(S.link)}" target="_blank" rel="noopener">${m[1]}</a>`; }
+    else out+=`<bdi dir="rtl" class="he">${esc(m[0])}</bdi>`;
+  }
+  return out+esc(t.slice(last));
 }
 // garde une citation seulement si elle se trouve vraiment dans le passage du livre
 const normCite=t=>plainHeb(t).replace(/[^א-ת]+/g,' ').replace(/[ךםןףץ]/g,c=>({'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'}[c])).trim();
@@ -635,18 +655,18 @@ async function renderVerdict(){
     const r=await sample.json(buildPrompt(true),{signal:my.signal,modelTier:'complex'});
     if(my!==CTL) return;
     const sens=(Array.isArray(r.sens)?r.sens:[r.sens]).filter(Boolean);
-    v.innerHTML=`<p class="vlabel">Conclusion</p>${sens.length?`<p class="vsens">Sens du mot : ${sens.map(esc).join(' ; ')}</p>`:''}<p class="vtext">${esc(r.conclusion||'')}</p>
+    v.innerHTML=`<p class="vlabel">Conclusion</p>${sens.length?`<p class="vsens">Sens du mot : ${sens.map(x=>rich(x)).join(' ; ')}</p>`:''}<p class="vtext">${rich(r.conclusion)}</p>
       <p class="vnote">Écrite par Claude à partir du livre. Le détail lettre par lettre, avec les citations, est plus bas.</p>`;
     const A=$('#assemble'), items=CURRENT.words.flatMap(w=>w.items), ls=Array.isArray(r.lettres)?r.lettres:[];
     if(A&&ls.length){
       A.innerHTML=`<h2 class="sec">Comment les lettres expliquent le mot</h2><ol class="build">${ls.map((x,k)=>{
         const it=items[k], e=it&&E[it.base], ok=e&&citeOk(x.citation,e), pdf=e&&(e.main||e.brk).pdf[0];
         return `<li><span class="he bw">${esc(x.lettre||(it?it.ch:''))}</span>
-          <p><b>Le livre :</b> ${esc(x.livre||'')}</p>
+          <p><b>Le livre :</b> ${rich(x.livre)}</p>
           ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>`:''}
-          <p><b>Pour ce mot :</b> ${x.lien?esc(x.lien):'<span class="status">pas de lien clair avec le sens du mot.</span>'}</p>
+          <p><b>Pour ce mot :</b> ${x.lien?rich(x.lien):'<span class="status">pas de lien clair avec le sens du mot.</span>'}</p>
           ${pdf?`<button class="bpage" data-page="${pdf}">Voir la page du livre</button>`:''}</li>`; }).join('')}</ol>
-        ${r.voyelles?`<p class="vvoy"><i class="kdot k-nekuda"></i>${esc(r.voyelles)}</p>`:''}
+        ${r.voyelles?`<p class="vvoy"><i class="kdot k-nekuda"></i>${rich(r.voyelles)}</p>`:''}
         <p class="vnote">Écrit par Claude à partir des passages du livre. Les citations sont vérifiées : une citation introuvable dans le livre n'est pas affichée.</p>`;
     }
   }catch(e){
@@ -778,7 +798,7 @@ function drawBody(){
   h+=`<p class="status">${FILTERS[st.f][0]} : ${FILTERS[st.f][1]}</p>`;
   const books=sum[st.f].books;
   if(Object.keys(books).length>1) h+=`<div class="tk-books" dir="rtl">${Object.keys(books).map(b=>`<span><b>${esc(b)}</b> ${books[b]}</span>`).join('')}</div>`;
-  h+=`<div class="hits">`+st.items.map(r=>`<div class="hit"><span class="ref">${esc(r.book)} ${esc(r.ref)}</span><span class="${S.ltr?'de':'he'}" lang="${S.ltr?'de':'he'}">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span></div>`).join('')+`</div>`;
+  h+=`<div class="hits">`+st.items.map(r=>`<div class="hit">${r.link?`<a class="ref" href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.book)} ${esc(r.ref)} ↗</a>`:`<span class="ref">${esc(r.book)} ${esc(r.ref)}</span>`}<span class="${S.ltr?'de':'he'}" lang="${S.ltr?'de':'he'}">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span></div>`).join('')+`</div>`;
   const left=sum[st.f].n-st.items.length;
   if(st.loading) h+=`<p class="status">Chargement…</p>`;
   else if(st.pageErr) h+=`<div class="act"><button class="ghost" data-more>Impossible de charger les passages. Réessayer</button></div>`;
@@ -800,17 +820,19 @@ function renderSynthAll(){
   $('#sa-go').onclick=()=>runSynthAll(box);
 }
 async function synthMaterial(){
-  const q=TXQ, parts=[];
+  // chaque passage reçoit un numéro : Claude y renvoie par [n], la page en fait un lien vers le texte original
+  const q=TXQ, parts=[], srcs=[];
+  const add=(he,fr,txt,o)=>{ srcs.push({he,fr,...o}); return `[${srcs.length}] ${he}${fr?' ('+fr+')':''} : ${txt}`; };
   for(const S of SOURCES){
     const st=TX.st[S.id], name=`${S.he} (${S.fr})`;
-    if(S.id==='livre'){ parts.push(`## ${name}\n`+(st.n?st.snips.map(x=>'- '+x).join('\n'):'Le mot n\'apparaît pas tel quel dans le livre.')); continue; }
+    if(S.id==='livre'){ parts.push(`## ${name}\n`+(st.n?st.snips.map(x=>add(`ראש מילין, ${x.ref}`,`page ${x.page-2} du livre`,x.txt,{page:x.page})).join('\n'):'Le mot n\'apparaît pas tel quel dans le livre.')); continue; }
     if(st.state!=='done'){ parts.push(`## ${name}\nNon cherché (texte pas encore téléchargé).`); continue; }
     const f=st.sum.exact.n?'exact':'all', n=st.sum[f].n;
     if(!n){ parts.push(`## ${name}\nAucun passage.`); continue; }
     let items=[]; try{ items=await SEARCH('page',{src:S.id,q,f,from:0,n:5}); }catch(e){}
-    parts.push(`## ${name}\n${n} passage${n>1?'s':''}${f==='all'?' (avec une lettre ajoutée devant le mot)':''}. Exemples :\n`+items.map(r=>`- ${r.book} ${r.ref} : ${r.pre}[${r.mark}]${r.post}`).join('\n'));
+    parts.push(`## ${name}\n${n} passage${n>1?'s':''}${f==='all'?' (avec une lettre ajoutée devant le mot)':''}. Exemples :\n`+items.map(r=>add(`${r.book}, ${r.ref}`,'',`${r.pre}«${r.mark}»${r.post}`,{link:r.link})).join('\n'));
   }
-  return parts.join('\n\n');
+  return {text:parts.join('\n\n'),srcs};
 }
 function synthPrompt(material,forJson){
   const elems=[], seen=new Set();
@@ -824,12 +846,14 @@ ${structure()}
 Idée de chaque élément :
 ${elems.join('\n')}
 ${concl?'Conclusion déjà tirée des lettres : '+concl+'\n':''}
-2. Ce mot dans les textes (le mot cherché est entre crochets) :
+2. Ce mot dans les textes (le mot cherché est entre « » ; chaque passage a un numéro entre crochets) :
 
 ${material}
 
 Tâche : pars du sens réel du mot (celui du dictionnaire ; n'invente aucun sens nouveau) et écris UNE seule explication de ce mot qui unit toutes ces approches : les lettres selon le Rav Kook, le sens du mot dans le תנ״ך, le ספר יצירה et le commentaire du גר״א, le midrash אותיות דרבי עקיבא, le זהר, le שערי אורה, les enseignements de רבי נחמן et de רבי נתן, et le commentaire de Hirsch (qui rapproche les racines aux sons proches). Montre ce qui les relie : une même idée vue sous plusieurs angles. Ne garde que ce qui s'appuie sur les passages donnés ; quand une source n'a rien, n'invente rien pour elle. Aucune image ni comparaison qui ne vient pas des textes. Sépare clairement ce que disent les textes de ton interprétation.
-Écris en français très simple, pour n'importe qui : phrases courtes, mots de tous les jours, aucun mot savant ; pas de mot hébreu au milieu d'une phrase française et pas de translittération.`;
+Sources : chaque fois que tu t'appuies sur un passage, nomme précisément le livre et l'endroit (par exemple : le midrash אותיות דרבי עקיבא, נוסח א, à la lettre ח) et mets juste après le numéro du passage entre crochets, par exemple [3]. N'utilise que les numéros donnés plus haut. Ne dis jamais « un livre ancien » sans dire lequel.
+Mots hébreux : quand tu parles d'un mot, écris-le en lettres hébraïques et dis ce qu'il veut dire ; si tu dis qu'un mot ressemble à un autre, écris les deux. Jamais de translittération en lettres latines.
+Écris en français très simple, pour n'importe qui : phrases courtes, mots de tous les jours, aucun mot savant.`;
   if(forJson) return base+`
 
 Réponds uniquement avec un objet JSON de cette forme :
@@ -842,13 +866,13 @@ Commence par l'idée qui unit tout, en une ou deux phrases. Ensuite, dis en une 
 }
 async function runSynthAll(box){
   box.querySelector('.act').innerHTML='<p class="vwait">Rassemblement des passages…</p>';
-  const material=await synthMaterial(); if(!box.isConnected) return;
+  const {text:material,srcs}=await synthMaterial(); if(!box.isConnected) return;
   const sample=await getSample(); if(!box.isConnected) return;
   const head='<h2 class="sec">Synthèse de toutes les explications</h2>';
   if(!sample){
     const on=navigator.onLine;
     box.innerHTML=head+`<p class="status">${on?'Ici, la synthèse se fait dans une conversation avec Claude : copie la demande et colle-la.':'Hors ligne : la synthèse demande une connexion.'}</p>${on?`<div class="act">${navigator.share?'<button class="primary" id="sa-share">Demander à Claude</button>':''}<button class="${navigator.share?'ghost':'primary'}" id="sa-copy">Copier la demande</button>${navigator.share?'':'<a class="ghost" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>'}</div><p class="status" id="sa-st"></p>`:''}`;
-    const t=synthPrompt(material,false), st=$('#sa-st');
+    const t=synthPrompt(material,false)+'\n\nÀ la fin, donne la liste des sources citées avec leur lien :\n'+srcs.map((S,i)=>`[${i+1}] ${S.he} : ${S.link||S.fr}`).join('\n'), st=$('#sa-st');
     const sh=$('#sa-share'); if(sh) sh.onclick=async()=>{ try{ await navigator.share({title:'ראש מילין',text:t}); }catch(e){ if(e.name!=='AbortError') st.textContent='Le partage n\'a pas fonctionné. Utilise « Copier la demande ».'; } };
     const cp=$('#sa-copy'); if(cp) cp.onclick=async()=>{ try{ await navigator.clipboard.writeText(t); st.textContent='Demande copiée. Colle-la dans une nouvelle conversation avec Claude.'; }catch(e){ st.textContent='La copie a été refusée.'; } };
     return;
@@ -860,8 +884,11 @@ async function runSynthAll(box){
     if(my!==SACTL||!box.isConnected) return;
     const paras=(Array.isArray(r.synthese)?r.synthese:[r.synthese||'']).filter(Boolean);
     const ap=Array.isArray(r.apports)?r.apports.filter(x=>x&&x.idee):[];
-    box.innerHTML=head+`<div class="sa-text">${paras.map(x=>`<p>${esc(x)}</p>`).join('')}</div>
-      ${ap.length?`<ul class="sa-src">${ap.map(x=>`<li><b>${esc(x.source||'')}</b><br>${esc(x.idee)}</li>`).join('')}</ul>`:''}
+    const used=[...new Set((JSON.stringify(r).match(/\[(\d+)\]/g)||[]).map(x=>+x.slice(1,-1)))].filter(n=>srcs[n-1]).sort((a,b)=>a-b);
+    box.innerHTML=head+`<div class="sa-text">${paras.map(x=>`<p>${rich(x,srcs)}</p>`).join('')}</div>
+      ${ap.length?`<ul class="sa-src">${ap.map(x=>`<li><b>${esc(x.source||'')}</b><br>${rich(x.idee,srcs)}</li>`).join('')}</ul>`:''}
+      ${used.length?`<h3 class="sa-h">Sources citées</h3><ol class="sa-list">${used.map(n=>{ const S=srcs[n-1];
+        return `<li value="${n}"><bdi dir="rtl" class="he">${esc(S.he)}</bdi>${S.fr?' · '+esc(S.fr):''} — ${S.page?`<button class="bpage" data-page="${S.page}">voir la page du livre</button>`:`<a href="${esc(S.link)}" target="_blank" rel="noopener">lire le texte original ↗</a>`}</li>`; }).join('')}</ol>`:''}
       <p class="vnote">Écrite par Claude à partir des lettres et des passages trouvés. Vérifie dans les passages ci-dessus.</p>
       <div class="act"><button class="ghost" id="sa-go">Refaire la synthèse</button></div>`;
     $('#sa-go').onclick=()=>runSynthAll(box);
@@ -887,7 +914,7 @@ function bookHits(words){
       if(res.length>60) break;
     }
   });
-  const snips=res.slice(0,5).map(h=>h.sec.title.replace(/[״"#]/g,'').trim()+' : '+h.txt.slice(Math.max(0,h.i-150),h.i)+'['+h.txt.slice(h.i,h.i+h.len)+']'+h.txt.slice(h.i+h.len,h.i+h.len+150));
+  const snips=res.slice(0,5).map(h=>({ref:h.sec.title.replace(/[״"#]/g,'').trim(),page:h.sec.pdf[0],txt:h.txt.slice(Math.max(0,h.i-150),h.i)+'«'+h.txt.slice(h.i,h.i+h.len)+'»'+h.txt.slice(h.i+h.len,h.i+h.len+150)}));
   if(!res.length) return {n:0,snips,html:'<p class="status">Ce mot n\'apparaît pas tel quel dans le texte du livre. L\'explication se lit donc à travers ses lettres, ci-dessus.</p>'};
   const html=`<p class="status">${res.length>60?'Plus de 60':res.length} passage${res.length>1?'s':''}${res.length>25?', les 25 premiers affichés':''}.</p><div class="hits">`+res.slice(0,25).map(h=>{
     const a=Math.max(0,h.i-70), b=Math.min(h.txt.length,h.i+h.len+70);

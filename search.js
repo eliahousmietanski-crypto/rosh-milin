@@ -16,6 +16,9 @@ const CORPORA={
   hirsch:[['רש״ר הירש',['hirsch']]],
   natan:[['ליקוטי הלכות',['likutei_halakhot_1','likutei_halakhot_2','likutei_halakhot_3','likutei_halakhot_4']],['ליקוטי תפילות',['likutei_tefilot']],['ליקוטי עצות',['likutei_etzot']],['חיי מוהר״ן',['chayei_moharan']],['שבחי הר״ן',['shivchei_haran']]],
 };
+const BOOKS_EN=['Genesis','Exodus','Leviticus','Numbers','Deuteronomy','Joshua','Judges','I Samuel','II Samuel','I Kings','II Kings','Isaiah','Jeremiah','Ezekiel','Hosea','Joel','Amos','Obadiah','Jonah','Micah','Nahum','Habakkuk','Zephaniah','Haggai','Zechariah','Malachi','Psalms','Proverbs','Job','Song of Songs','Ruth','Lamentations','Ecclesiastes','Esther','Daniel','Ezra','Nehemiah','I Chronicles','II Chronicles'];
+// lien vers le texte original : une référence Sefaria (« Zohar, Bereshit.1.5 ») ou une adresse complète
+const linkOf=r=>!r?'':/^https?:/.test(r)?encodeURI(r):'https://www.sefaria.org/'+encodeURIComponent(r.replace(/ /g,'_')).replace(/%2F/g,'/')+'?lang=he';
 const consOf=s=>s.replace(/[^א-ת]/g,'');
 const vowOf=s=>s.normalize('NFD').replace(/[^א-תְ-ׇֻ]/g,'').replace(/ֺ/g,'ֹ').replace(/ׇ/g,'ָ');
 function gem(n){
@@ -83,7 +86,7 @@ function tanakhPassage(h){
     const t=p.replace('/','');
     (k<h.i?pre:k<h.i+h.n&&(/[א-ת]/.test(p)||k<h.i+h.n-1)?mark:post).push(t);
   }
-  return {book:h.book,ref:`${gem(h.vs.c)}, ${gem(h.vs.v)}`,pre:pre.join(''),mark:mark.join(''),post:post.join('')};
+  return {book:h.book,ref:`${gem(h.vs.c)}, ${gem(h.vs.v)}`,pre:pre.join(''),mark:mark.join(''),post:post.join(''),link:linkOf(`${BOOKS_EN[h.vs.b]}.${h.vs.c}.${h.vs.v}`)};
 }
 
 /* ---------- זהר et Breslov : on ne garde que la position de chaque passage ---------- */
@@ -92,14 +95,27 @@ function corpusRe(words){
   return new RegExp(`(?<![א-ת֑-ׇ])((?:[ובהלמשכ]${MK}){0,3}?)(${w.join('[\\s־]+')})(?![א-ת֑-ׇׅ])`,'g');
 }
 let TXT={f:null,t:''};
+const REFS={};   // fichier .refs : une référence par ligne du texte
+async function refsOf(f){
+  if(!REFS[f]) REFS[f]=getText(f.replace(/\.txt$/,'.refs')).then(t=>t.split('\n')).catch(()=>{ delete REFS[f]; return []; });
+  return REFS[f];
+}
+function lineOf(f){   // début de chaque ligne du fichier courant, pour retrouver le numéro de ligne d'un passage
+  if(TXT.f!==f||TXT.starts) return TXT.starts;
+  const st=[0], t=TXT.t; for(let i=t.indexOf('\n');i>=0;i=t.indexOf('\n',i+1)) st.push(i+1);
+  return TXT.starts=st;
+}
 async function corpusPassage(h){
   if(TXT.f!==h.f) TXT={f:h.f,t:await getText(h.f)};
+  const starts=lineOf(h.f); let lo=0, hi=starts.length-1;
+  while(lo<hi){ const m=(lo+hi+1)>>1; if(starts[m]<=h.p) lo=m; else hi=m-1; }
+  const link=linkOf((await refsOf(h.f))[lo]);
   const t=TXT.t, a=t.lastIndexOf('\n',h.p)+1, b=t.indexOf('\n',h.p), tab=t.indexOf('\t',a);
   const txt=t.slice(tab+1,b<0?t.length:b), i=h.p-tab-1;
   const s=Math.max(0,i-90), e=Math.min(txt.length,i+h.len+90);
   const pre=s>0?'…'+txt.slice(s,i).replace(/^\S*\s/,''):txt.slice(0,i);
   const post=e<txt.length?txt.slice(i+h.len,e).replace(/\s\S*$/,'')+'…':txt.slice(i+h.len);
-  return {book:h.book,ref:t.slice(a,tab),pre,mark:txt.substr(i,h.len),post};
+  return {book:h.book,ref:t.slice(a,tab),pre,mark:txt.substr(i,h.len),post,link};
 }
 
 /* ---------- interface commune ---------- */

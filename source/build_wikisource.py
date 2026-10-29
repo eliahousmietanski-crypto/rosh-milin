@@ -4,7 +4,8 @@ d'après l'édition de י״ד אייזנשטיין, אוצר מדרשים.
 
 Usage : python3 build_wikisource.py <dossier de téléchargement> <dossier corpus de sortie>
 
-Format de sortie, un paragraphe par ligne : « référence<TAB>texte ».
+Format de sortie, un paragraphe par ligne : « référence<TAB>texte » ;
+le fichier .refs donne pour chaque ligne le lien vers la page de Wikisource.
 """
 import sys, os, re, time, urllib.parse, urllib.request
 
@@ -47,7 +48,7 @@ def clean(t):
 
 def main(dl, outdir):
     os.makedirs(dl, exist_ok=True)
-    out = []
+    out, refs = [], []
     for title, nusach in PAGES:
         part, letter, n = '', '', 0
         for block in re.split(r'\n\s*\n', fetch(dl, title)):
@@ -66,8 +67,10 @@ def main(dl, outdir):
             n += 1
             ref = ', '.join(x for x in (nusach, part, letter and 'אות ' + letter, gem(n)) if x)
             out.append(ref + '\t' + t)
+            refs.append('https://he.wikisource.org/wiki/' + title.replace(' ', '_') + ('#' + letter if letter else ''))
     fn = os.path.join(outdir, 'otiyot_rabbi_akiva.txt')
     open(fn, 'w').write('\n'.join(out) + '\n')
+    open(fn[:-4] + '.refs', 'w').write('\n'.join(refs) + '\n')
     print(len(out), 'paragraphes', os.path.getsize(fn), 'octets', file=sys.stderr)
 
 
