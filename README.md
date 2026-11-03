@@ -17,6 +17,9 @@ Sur Android (Chrome) : ouvrir le lien, menu ⋮ → « Installer l'application �
 | `sw.js` | Fonctionnement hors ligne (les textes, eux, sont gardés par `search.js`) |
 | `source/rosh-milin.txt` | Le texte complet retranscrit, page par page |
 | `tanakh.txt` | Le texte du תנ"ך (codex de Leningrad), un verset par ligne, pour trouver les occurrences d'un mot |
+| `tanakh_fr.txt` | La traduction française du תנ"ך (Bible du Rabbinat, 1899), verset par verset |
+| `source/rosh-milin-fr.txt` | La traduction française du ראש מילין faite pour cette application, paragraphe par paragraphe (elle est aussi dans `data.json`) |
+| `source/build_tanakh_fr.py` | Fabrique `tanakh_fr.txt` depuis l'export public de Sefaria |
 | `source/build_tanakh.py` | Fabrique `tanakh.txt` depuis les fichiers OSIS d'Open Scriptures |
 | `corpus/` | Le זהר (avec זהר חדש et תיקוני זהר), le ספר יצירה (version du גר״א) et le commentaire du גר״א, le שערי אורה, les livres de רבי נחמן et de רבי נתן, le commentaire de la Torah de Hirsch : un paragraphe par ligne |
 | `source/build_sefaria.py` | Fabrique `corpus/` depuis l'export public de Sefaria ; chaque `.refs` donne, ligne par ligne, la référence du passage pour le lien vers le texte original |
@@ -31,3 +34,5 @@ Le זהר, le זהר חדש, les תיקוני זהר et les livres de רבי נ�
 Le ספר יצירה (version du גר״א, Varsovie 1884) et le commentaire du גר״א, le שערי אורה de Rabbi Yossef Gikatilla et le commentaire de la Torah du Rav Samson Raphaël Hirsch (original allemand de 1903, domaine public) viennent aussi de Sefaria.
 
 Le midrash אותיות דרבי עקיבא (אלפא ביתא דרבי עקיבא, נוסח א et נוסח ב, d'après l'édition de J. D. Eisenstein, אוצר מדרשים) vient de Wikisource en hébreu (https://he.wikisource.org/wiki/אלפא_ביתא_דרבי_עקיבא), sous licence CC BY-SA.
+
+Traductions françaises : le תנ"ך suit la Bible du Rabbinat (1899, sous la direction du grand-rabbin Zadoc Kahn, domaine public), d'après Sefaria. Le ראש מילין a été traduit pour cette application ; c'est une aide à la lecture, pas une édition. Pour les autres livres, il n'existe pas de traduction française libre : le bouton « traduction » les fait traduire par Claude, passage par passage.

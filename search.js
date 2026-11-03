@@ -79,14 +79,20 @@ function searchTanakh(words){
   }
   return {hits,withV};
 }
-function tanakhPassage(h){
+// traduction française (Bible du Rabbinat, 1899), chargée la première fois qu'on affiche des versets
+let TKFR=null;
+function loadTanakhFr(){
+  if(!TKFR) TKFR=getText('tanakh_fr.txt').then(t=>{ const m=new Map(); for(const l of t.split('\n')){ const i=l.indexOf('\t'); if(i>0) m.set(l.slice(0,i),l.slice(i+1)); } return m; }).catch(e=>{ TKFR=null; return new Map(); });
+  return TKFR;
+}
+function tanakhPassage(h,fr){
   let k=-1; const pre=[], mark=[], post=[];
   for(const p of h.vs.txt.split(/([ ־]+)/)){
     if(/[א-ת]/.test(p)) k++;
     const t=p.replace('/','');
     (k<h.i?pre:k<h.i+h.n&&(/[א-ת]/.test(p)||k<h.i+h.n-1)?mark:post).push(t);
   }
-  return {book:h.book,ref:`${gem(h.vs.c)}, ${gem(h.vs.v)}`,pre:pre.join(''),mark:mark.join(''),post:post.join(''),link:linkOf(`${BOOKS_EN[h.vs.b]}.${h.vs.c}.${h.vs.v}`)};
+  return {book:h.book,ref:`${gem(h.vs.c)}, ${gem(h.vs.v)}`,pre:pre.join(''),mark:mark.join(''),post:post.join(''),link:linkOf(`${BOOKS_EN[h.vs.b]}.${h.vs.c}.${h.vs.v}`),fr:fr&&fr.get(`${h.vs.b} ${h.vs.c} ${h.vs.v}`)||''};
 }
 
 /* ---------- זהר et Breslov : on ne garde que la position de chaque passage ---------- */
@@ -145,7 +151,8 @@ const Core={
   async page({src,q,f,from,n}){
     const R=RES[src]; if(!R||R.q!==q) throw new Error('stale');
     const list=R.hits.filter(h=>keep(h,f)).slice(from,from+n), out=[];
-    for(const h of list) out.push(src==='tanakh'?tanakhPassage(h):await corpusPassage(h));
+    const fr=src==='tanakh'?await loadTanakhFr():null;
+    for(const h of list) out.push(src==='tanakh'?tanakhPassage(h,fr):await corpusPassage(h));
     return out;
   },
 };
