@@ -338,7 +338,7 @@ details.more[open]>summary{margin-bottom:10px}
 
 <script>
 "use strict";
-let DB=null, E={}, ORDER=[];
+let DB=null, E={}, ORDER=[], PENDING=null;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -360,6 +360,7 @@ async function load(){
   DB.entries.forEach((e,i)=>{E[e.id]=e;e.idx=i;});
   ORDER=DB.entries;
   buildPalettes(); route();
+  if(PENDING){ const v=PENDING; PENDING=null; try{localStorage.setItem('rm-last',v);}catch(e){} renderWord(v,false); }
 }
 
 /* ---------- analyse du mot ---------- */
@@ -1020,7 +1021,9 @@ document.addEventListener('click',ev=>{
 window.addEventListener('hashchange',route);
 $('#tab-word').onclick=()=>{ location.hash=''; history.replaceState(null,'',location.pathname); route(); };
 $('#tab-browse').onclick=()=>{ location.hash='parcourir'; };
-$('#askform').addEventListener('submit',ev=>{ ev.preventDefault(); const v=$('#q').value; if(!v.trim())return; try{localStorage.setItem('rm-last',v);}catch(e){} if(location.hash) {history.replaceState(null,'',location.pathname);} show('word'); renderWord(v,false); $('#q').blur(); window.scrollTo({top:0}); });
+$('#askform').addEventListener('submit',ev=>{ ev.preventDefault(); const v=$('#q').value; if(!v.trim())return;
+  if(!DB){ PENDING=v; $('#result').innerHTML='<p class="status">Chargement du livre…</p>'; return; }   // le livre n'est pas encore chargé : on cherchera juste après
+  try{localStorage.setItem('rm-last',v);}catch(e){} if(location.hash) {history.replaceState(null,'',location.pathname);} show('word'); renderWord(v,false); $('#q').blur(); window.scrollTo({top:0}); });
 
 netState(); load();
 if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }catch(e){} }
