@@ -240,7 +240,10 @@ details.more[open]>summary{margin-bottom:10px}
 .rebus{display:flex;flex-wrap:nowrap;align-items:stretch;justify-content:center;gap:4px;overflow-x:auto;padding-bottom:2px}
 .rb{flex:1 1 0;display:grid;justify-items:center;align-content:start;gap:2px;background:var(--k-letter-soft);border-radius:12px;padding:6px 4px;min-width:58px;max-width:120px;text-align:center}
 .rbl{font-size:1.8rem;line-height:1.2}
-.rbi{font-size:.78rem;font-weight:600;line-height:1.25;direction:ltr}
+.rbn{font-size:.85rem;color:var(--muted);line-height:1.1}
+.rbi{font-size:.78rem;font-weight:700;line-height:1.25;direction:ltr}
+.rbc{font-size:.74rem;line-height:1.25;direction:ltr;color:var(--muted)}
+.barrow{color:var(--gold)}
 .rbop{align-self:center;flex:none;font-weight:700;color:var(--gold);font-size:1.1rem}
 .rbeq{margin:0;text-align:center;font-size:1.25rem}
 .bimg{font-weight:700}
@@ -584,9 +587,11 @@ function passages(){
     parts.push(s);});
   return parts.join('\n');
 }
+// nom de la lettre sans les guillemets : בי״ת → בית ; forme finale : כ״ף פשוטה → כף
+const letterName=it=>plainHeb((E[it.isFinal?it.ch:it.base]||E[it.base]).name).replace(/ פשוטה| סתומה/,'');
 function structure(){
   return CURRENT.words.map(w=>w.items.map((it,i)=>{
-    const p=[`${i+1}. lettre ${E[it.base].name}`];
+    const p=[`${i+1}. lettre ${it.ch}, de nom ${letterName(it)}`];
     if(it.isFinal) p.push('forme finale');
     if(it.hatafMark) p.push('voyelle composée '+plainHeb(HATAF[it.hatafMark])+' (שוא + '+NIK[it.hatafMark][1]+')');
     else if(it.niks.length) p.push('voyelle '+it.niks.join(' + '));
@@ -598,7 +603,7 @@ function structure(){
 function buildPrompt(forJson){
   const raw=CURRENT.raw.trim();
   const letters=CURRENT.words.map(w=>w.items.map(it=>it.ch).join(' ')).join(' / ');
-  const base=`Le livre ראש מילין du Rav Kook (1917) donne à chaque lettre hébraïque, à chaque lettre finale, voyelle, signe de cantillation et couronne une idée, un concept. Un mot se lit alors comme un rébus : chaque lettre est une image, c'est-à-dire un concept ; on associe ces images dans l'ordre du mot, et leur association forme un concept nouveau, celui que le mot nomme.
+  const base=`Le livre ראש מילין du Rav Kook (1917) donne à chaque lettre hébraïque, à chaque lettre finale, voyelle, signe de cantillation et couronne une idée, un concept. Un mot se lit alors comme un rébus : chaque lettre est une image, et le nom de l'image est le nom de la lettre (בית : la maison ; דלת : la porte ; עין : l'œil ; מים : l'eau…). Le livre dit quel concept cette image représente. On associe ces images dans l'ordre du mot, et leur association forme un concept nouveau, celui que le mot nomme.
 
 Mot à déchiffrer :
 ${raw}
@@ -607,7 +612,7 @@ Ses éléments, dans l'ordre :
 ${structure()}
 
 Méthode du rébus, à suivre strictement :
-1. L'image de chaque lettre : choisis dans les passages du livre l'idée de cette lettre qui sert le rébus, et donne-lui un nom court et clair (deux à cinq mots), comme le titre d'une image. Cette idée doit venir du livre : prouve-la par quelques mots hébreux recopiés exactement des passages.
+1. L'image de chaque lettre : c'est ce que désigne le nom de la lettre (donné plus haut). Dis ce que veut dire ce nom (la maison, la porte, l'eau…), puis le concept que le livre voit dans cette image, en deux à cinq mots. Ce concept doit venir du livre : prouve-le par quelques mots hébreux recopiés exactement des passages. Si le livre lit le nom de la lettre autrement (un autre mot qui s'écrit pareil), suis le livre et écris ce mot en hébreu.
 2. Les voyelles et les signes colorent l'image de la lettre qui les porte : intègre-les à l'image de cette lettre et dis-le.
 3. L'association : prends les images dans l'ordre du mot. Pour chaque lettre, dis en une phrase ce que son image ajoute à ce qu'on avait déjà (pour la première lettre : le point de départ).
 4. Le concept nouveau : nomme en quelques mots le concept qui naît de toute l'association, puis explique-le en une ou deux phrases simples.
@@ -616,8 +621,8 @@ Les images viennent du livre, pas d'ailleurs : n'ajoute aucune comparaison de la
   if(forJson) return base+`
 
 Réponds uniquement avec un objet JSON de cette forme :
-{"lettres": [{"lettre": "...", "image": "...", "citation": "...", "ajout": "..."}], "concept": "...", "explication": "...", "sens": ["..."], "verification": "..."}
-- "lettres" : une entrée par lettre, dans l'ordre (${letters}). "lettre" : la lettre telle qu'elle est écrite dans le mot, avec ses signes. "image" : le nom de son image, deux à cinq mots en français. "citation" : quelques mots hébreux recopiés exactement des passages. "ajout" : une phrase, ce que cette image ajoute dans l'association.
+{"lettres": [{"lettre": "...", "image": "...", "concept": "...", "citation": "...", "ajout": "..."}], "concept": "...", "explication": "...", "sens": ["..."], "verification": "..."}
+- "lettres" : une entrée par lettre, dans l'ordre (${letters}). "lettre" : la lettre telle qu'elle est écrite dans le mot, avec ses signes. "image" : ce que veut dire le nom de la lettre, un à trois mots en français (par exemple « la maison » pour בית). "concept" : le concept que le livre voit dans cette image, deux à cinq mots. "citation" : quelques mots hébreux recopiés exactement des passages. "ajout" : une phrase, ce que cette image ajoute dans l'association.
 - "concept" : le concept nouveau, en quelques mots.
 - "explication" : une ou deux phrases qui expliquent ce concept.
 - "sens" : le ou les sens réels du mot, en français, quelques mots chacun.
@@ -628,7 +633,7 @@ Passages du livre :
 ${passages()}`;
   return base+`
 
-Présentation : pour chaque lettre, son image (avec quelques mots hébreux cités du livre, sur une ligne à part) et ce qu'elle ajoute ; puis l'association écrite comme une équation (image + image + image = concept) ; puis le concept nouveau expliqué ; enfin le sens réel du mot et ce que le rébus en éclaire. Réponds en français.
+Présentation : pour chaque lettre, son nom, l'image que ce nom désigne, le concept que le livre y voit (avec quelques mots hébreux cités du livre, sur une ligne à part) et ce qu'elle ajoute ; puis l'association écrite comme une équation (image + image + image = concept) ; puis le concept nouveau expliqué ; enfin le sens réel du mot et ce que le rébus en éclaire. Réponds en français.
 
 Passages du livre :
 
@@ -665,7 +670,7 @@ async function renderVerdict(){
     const sens=(Array.isArray(r.sens)?r.sens:[r.sens]).filter(Boolean);
     const items=CURRENT.words.flatMap(w=>w.items), ls=Array.isArray(r.lettres)?r.lettres:[];
     // le rébus en une ligne : image + image + … = concept
-    const eq=ls.map((x,k)=>`<span class="rb"><span class="he rbl">${esc(x.lettre||(items[k]?items[k].ch:''))}</span><span class="rbi">${rich(x.image)}</span></span>`).join('<span class="rbop">+</span>');
+    const eq=ls.map((x,k)=>`<span class="rb"><span class="he rbl">${esc(x.lettre||(items[k]?items[k].ch:''))}</span>${items[k]?`<span class="he rbn">${esc(letterName(items[k]))}</span>`:''}<span class="rbi">${rich(x.image)}</span><span class="rbc">${rich(x.concept)}</span></span>`).join('<span class="rbop">+</span>');
     v.innerHTML=`<p class="vlabel">Le rébus</p>
       ${ls.length?`<div class="rebus" dir="rtl">${eq}</div>`:''}
       <p class="rbeq"><span class="rbop">=</span> <b>${rich(r.concept)}</b></p>
@@ -677,7 +682,7 @@ async function renderVerdict(){
       A.innerHTML=`<h2 class="sec">Le rébus, lettre par lettre</h2><ol class="build">${ls.map((x,k)=>{
         const it=items[k], e=it&&E[it.base], ok=e&&citeOk(x.citation,e), pdf=e&&(e.main||e.brk).pdf[0];
         return `<li><span class="he bw">${esc(x.lettre||(it?it.ch:''))}</span>
-          <p class="bimg">${rich(x.image)}</p>
+          <p class="bimg">${it?`<bdi dir="rtl" class="he">${esc(letterName(it))}</bdi> : `:''}${rich(x.image)} <span class="barrow">→</span> ${rich(x.concept)}</p>
           ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>`:''}
           <p>${rich(x.ajout)}</p>
           ${pdf?`<button class="bpage" data-page="${pdf}">Voir la page du livre</button>`:''}</li>`; }).join('')}</ol>
