@@ -246,6 +246,10 @@ details.more[open]>summary{margin-bottom:10px}
 .barrow{color:var(--gold)}
 .rbop{align-self:center;flex:none;font-weight:700;color:var(--gold);font-size:1.1rem}
 .rbeq{margin:0;text-align:center;font-size:1.25rem}
+.phr{margin:4px 0 0;font-size:1.3rem;line-height:2.3;font-weight:600}
+.pw{display:inline-flex;flex-direction:column;align-items:center;vertical-align:bottom;line-height:1.15;margin:0 2px;padding:2px 6px 3px;border-radius:10px;background:var(--k-letter-soft)}
+.pwl{font-size:1rem;color:var(--gold);font-weight:700}
+.pwt{font-size:1.15rem}
 .bimg{font-weight:700}
 .build p{margin:4px 0 0}
 .bcite{font-size:1.05rem;color:var(--muted)}
@@ -604,37 +608,36 @@ function structure(){
 function buildPrompt(forJson){
   const raw=CURRENT.raw.trim();
   const letters=CURRENT.words.map(w=>w.items.map(it=>it.ch).join(' ')).join(' / ');
-  const base=`Le livre ראש מילין du Rav Kook (1917) donne à chaque lettre hébraïque, à chaque lettre finale, voyelle, signe de cantillation et couronne une idée, un concept. Un mot se lit alors comme un rébus : chaque lettre est une image, et le nom de l'image est le nom de la lettre (בית : la maison ; דלת : la porte ; עין : l'œil ; מים : l'eau…). Le livre dit quel concept cette image représente. On associe ces images dans l'ordre du mot, et leur association forme un concept nouveau, celui que le mot nomme.
+  const base=`Le livre ראש מילין du Rav Kook (1917) donne à chaque lettre hébraïque (et aux lettres finales, voyelles, signes et couronnes) une idée. Son principe : un mot se lit comme une phrase. Dans une phrase, chaque mot a un sens, et le sens de la phrase vient de la suite de ces mots, dans leur ordre. Dans un mot, c'est pareil avec les lettres : chaque lettre est comme un mot, et la suite des lettres, dans l'ordre, forme une phrase qui dit ce qu'est la chose que le mot nomme.
 
-Mot à déchiffrer :
+Mot à lire :
 ${raw}
 
-Ses éléments, dans l'ordre :
+Ses lettres, dans l'ordre :
 ${structure()}
 
-Méthode du rébus, à suivre strictement :
-1. L'image de chaque lettre : c'est ce que désigne le nom de la lettre (donné plus haut). Dis ce que veut dire ce nom (la maison, la porte, l'eau…), puis le concept que le livre voit dans cette image, en deux à cinq mots. Ce concept doit venir du livre : prouve-le par quelques mots hébreux recopiés exactement des passages. Si le livre lit le nom de la lettre autrement (un autre mot qui s'écrit pareil), suis le livre et écris ce mot en hébreu.
-2. Les voyelles et les signes colorent l'image de la lettre qui les porte : intègre-les à l'image de cette lettre et dis-le.
-3. L'association : prends les images dans l'ordre du mot. Pour chaque lettre, dis en une phrase ce que son image ajoute à ce qu'on avait déjà (pour la première lettre : le point de départ).
-4. Le concept nouveau : nomme en quelques mots le concept qui naît de toute l'association, puis explique-le en une ou deux phrases simples.
-5. La vérification : donne le sens réel du mot (celui du dictionnaire) et dis en une phrase comment le concept trouvé l'éclaire. Si le rébus ne retombe pas clairement sur ce sens, dis-le honnêtement.
-Les images viennent du livre, pas d'ailleurs : n'ajoute aucune comparaison de la vie courante. Écris pour n'importe qui : phrases courtes, mots de tous les jours, aucun mot savant, rien de vague. Quand tu parles d'un autre mot, écris-le en lettres hébraïques et dis ce qu'il veut dire ; jamais de translittération.`;
+Méthode, à suivre strictement :
+1. Le sens réel : dis d'abord ce que veut dire le mot (celui du dictionnaire). C'est la chose que la phrase des lettres doit décrire.
+2. Le mot de chaque lettre : pour chaque lettre, choisis dans les passages du livre l'idée de cette lettre qui, à sa place dans la phrase, décrit le mieux cette chose. Écris-la comme un mot ou un petit groupe de mots français (un à quatre mots), utilisable dans une phrase. Prouve-la par quelques mots hébreux recopiés exactement des passages. Les voyelles et les signes précisent le mot de leur lettre.
+3. La phrase des lettres : écris une phrase française simple, correcte et claire, qui met les mots des lettres EXACTEMENT dans l'ordre des lettres, reliés seulement par de petits mots (qui, de, et, dans, pour…). La position compte : la première lettre ouvre la phrase, la dernière la termine. Quelqu'un qui lit cette phrase doit reconnaître la chose que le mot nomme, comme une définition.
+4. La lecture : en une ou deux phrases, explique ce que dit cette phrase et pourquoi c'est bien ce qu'est la chose nommée.
+5. Si aucune phrase claire n'est possible avec les idées du livre, dis-le honnêtement au lieu d'écrire une phrase vide de sens.
+Pas de mots savants, pas de formule vague, pas d'image qui n'est ni dans le livre ni dans la chose elle-même. Quand tu parles d'un autre mot, écris-le en lettres hébraïques ; jamais de translittération.`;
   if(forJson) return base+`
 
 Réponds uniquement avec un objet JSON de cette forme :
-{"lettres": [{"lettre": "...", "image": "...", "concept": "...", "citation": "...", "ajout": "..."}], "concept": "...", "explication": "...", "sens": ["..."], "verification": "..."}
-- "lettres" : une entrée par lettre, dans l'ordre (${letters}). "lettre" : la lettre telle qu'elle est écrite dans le mot, avec ses signes. "image" : ce que veut dire le nom de la lettre, un à trois mots en français (par exemple « la maison » pour בית). "concept" : le concept que le livre voit dans cette image, deux à cinq mots. "citation" : quelques mots hébreux recopiés exactement des passages. "ajout" : une phrase, ce que cette image ajoute dans l'association.
-- "concept" : le concept nouveau, en quelques mots.
-- "explication" : une ou deux phrases qui expliquent ce concept.
+{"sens": ["..."], "lettres": [{"lettre": "...", "mot": "...", "citation": "..."}], "phrase": "...", "lecture": "..."}
 - "sens" : le ou les sens réels du mot, en français, quelques mots chacun.
-- "verification" : une phrase qui dit comment le concept éclaire ce sens, ou honnêtement qu'il ne l'éclaire pas clairement.
+- "lettres" : une entrée par lettre, dans l'ordre (${letters}). "lettre" : la lettre telle qu'elle est écrite. "mot" : le mot (ou petit groupe de mots) français de cette lettre. "citation" : quelques mots hébreux recopiés exactement des passages.
+- "phrase" : la phrase des lettres. Entoure le mot de chaque lettre ainsi : [1:mot de la 1re lettre], [2:mot de la 2e lettre]… dans l'ordre, et laisse les petits mots de liaison en dehors des crochets. Exemple de forme (pas de contenu) : « [1:...] qui [2:...] et [3:...]. »
+- "lecture" : une ou deux phrases.
 
 Passages du livre :
 
 ${passages()}`;
   return base+`
 
-Présentation : pour chaque lettre, son nom, l'image que ce nom désigne, le concept que le livre y voit (avec quelques mots hébreux cités du livre, sur une ligne à part) et ce qu'elle ajoute ; puis l'association écrite comme une équation (image + image + image = concept) ; puis le concept nouveau expliqué ; enfin le sens réel du mot et ce que le rébus en éclaire. Réponds en français.
+Présentation : le sens réel du mot ; puis, pour chaque lettre, son mot (avec quelques mots hébreux cités du livre, sur une ligne à part) ; puis la phrase des lettres ; puis sa lecture. Réponds en français.
 
 Passages du livre :
 
@@ -659,48 +662,49 @@ const normCite=t=>plainHeb(t).replace(/[^א-ת]+/g,' ').replace(/[ךםןףץ]/g,
 function citeOk(c,e){ const n=normCite(c||''); if(n.split(' ').length<2) return false; return [e.main,e.brk].some(x=>x&&normCite(x.t).includes(n)); }
 async function renderVerdict(){
   const v=$('#verdict'); if(!v) return;
-  v.innerHTML=`<p class="vlabel">Le rébus</p><p class="vwait">Chargement…</p>`;
+  v.innerHTML=`<p class="vlabel">Le mot lu comme une phrase</p><p class="vwait">Chargement…</p>`;
   const sample=await getSample();
   if(!$('#verdict')||v!==$('#verdict')) return;
   if(!sample){ renderShare(v); return; }
   if(CTL) CTL.abort(); CTL=new AbortController(); const my=CTL;
-  v.innerHTML=`<p class="vlabel">Le rébus</p><p class="vwait">Claude déchiffre le rébus des lettres…</p>`;
+  v.innerHTML=`<p class="vlabel">Le mot lu comme une phrase</p><p class="vwait">Claude lit les lettres comme une phrase…</p>`;
   try{
     const r=await sample.json(buildPrompt(true),{signal:my.signal,modelTier:'complex'});
     if(my!==CTL) return;
     const sens=(Array.isArray(r.sens)?r.sens:[r.sens]).filter(Boolean);
     const items=CURRENT.words.flatMap(w=>w.items), ls=Array.isArray(r.lettres)?r.lettres:[];
-    // le rébus en une ligne : image + image + … = concept
-    const eq=ls.map((x,k)=>`<span class="rb"><span class="he rbl">${esc(x.lettre||(items[k]?items[k].ch:''))}</span>${items[k]?`<span class="he rbn">${esc(letterName(items[k]))}</span>`:''}<span class="rbi">${rich(x.image)}</span><span class="rbc">${rich(x.concept)}</span></span>`).join('<span class="rbop">+</span>');
-    v.innerHTML=`<p class="vlabel">Le rébus</p>
-      ${ls.length?`<div class="rebus" dir="rtl">${eq}</div>`:''}
-      <p class="rbeq"><span class="rbop">=</span> <b>${rich(r.concept)}</b></p>
-      <p class="vtext">${rich(r.explication)}</p>
-      ${sens.length?`<p class="vsens">Sens du mot : ${sens.map(x=>rich(x)).join(' ; ')}${r.verification?`<br><span class="vver">${rich(r.verification)}</span>`:''}</p>`:''}
-      <p class="vnote">Déchiffré par Claude à partir du livre. Le détail lettre par lettre, avec les citations, est plus bas.</p>`;
+    // la phrase des lettres : « [1:mot] qui [2:mot] » → chaque mot de lettre porte sa lettre au-dessus
+    const phrase=String(r.phrase||'').split(/(\[\d+:[^\]]*\])/).map(part=>{
+      const m=part.match(/^\[(\d+):([^\]]*)\]$/); if(!m) return rich(part);
+      const k=+m[1]-1, ch=(ls[k]&&ls[k].lettre)||(items[k]&&items[k].ch)||'';
+      return `<span class="pw"><span class="he pwl">${esc(ch)}</span><span class="pwt">${rich(m[2])}</span></span>`;
+    }).join('');
+    v.innerHTML=`<p class="vlabel">Le mot lu comme une phrase</p>
+      ${sens.length?`<p class="vsens">Sens du mot : ${sens.map(x=>rich(x)).join(' ; ')}</p>`:''}
+      <p class="phr">${phrase}</p>
+      <p class="vtext">${rich(r.lecture)}</p>
+      <p class="vnote">Lu par Claude à partir du livre. Le mot de chaque lettre, avec sa citation, est plus bas.</p>`;
     const A=$('#assemble');
     if(A&&ls.length){
-      A.innerHTML=`<h2 class="sec">Le rébus, lettre par lettre</h2><ol class="build">${ls.map((x,k)=>{
+      A.innerHTML=`<h2 class="sec">Le mot de chaque lettre</h2><ol class="build">${ls.map((x,k)=>{
         const it=items[k], e=it&&E[it.base], ok=e&&citeOk(x.citation,e), pdf=e&&(e.main||e.brk).pdf[0];
         return `<li><span class="he bw">${esc(x.lettre||(it?it.ch:''))}</span>
-          <p class="bimg">${it?`<bdi dir="rtl" class="he">${esc(letterName(it))}</bdi> : `:''}${rich(x.image)} <span class="barrow">→</span> ${rich(x.concept)}</p>
+          <p class="bimg">${it?`<bdi dir="rtl" class="he">${esc(letterName(it))}</bdi> <span class="barrow">→</span> `:''}${rich(x.mot)}</p>
           ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>`:''}
-          <p>${rich(x.ajout)}</p>
           ${pdf?`<button class="bpage" data-page="${pdf}">Voir la page du livre</button>`:''}</li>`; }).join('')}</ol>
-        <p class="bfin"><span class="rbop">=</span> ${rich(r.concept)}</p>
-        <p class="vnote">Les images viennent du livre ; les citations sont vérifiées : une citation introuvable dans le livre n'est pas affichée.</p>`;
+        <p class="vnote">Les mots des lettres viennent du livre ; les citations sont vérifiées : une citation introuvable dans le livre n'est pas affichée.</p>`;
     }
   }catch(e){
     if(e&&e.code==='cancelled') return;
     if(e&&['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ renderShare(v); return; }
-    v.innerHTML=`<p class="vlabel">Le rébus</p><p class="vwait">${e&&e.code==='rate_limited'?'Trop de demandes pour le moment. Réessaie dans un instant.':'Le rébus n\'a pas pu être déchiffré.'}</p><div class="act"><button class="primary" id="v-retry">Réessayer</button></div>`;
+    v.innerHTML=`<p class="vlabel">Le mot lu comme une phrase</p><p class="vwait">${e&&e.code==='rate_limited'?'Trop de demandes pour le moment. Réessaie dans un instant.':'La lecture n\'a pas pu être obtenue.'}</p><div class="act"><button class="primary" id="v-retry">Réessayer</button></div>`;
     $('#v-retry').onclick=()=>renderVerdict();
   }
 }
 function renderShare(v){
   const on=navigator.onLine;
-  v.innerHTML=`<p class="vlabel">Le rébus</p>
-    <p class="vwait">${on?'Claude peut déchiffrer le rébus : associer les images des lettres et dire le concept qu\'elles forment.':'Hors ligne : les idées de chaque lettre restent là. Pour la conclusion, il faut internet.'}</p>
+  v.innerHTML=`<p class="vlabel">Le mot lu comme une phrase</p>
+    <p class="vwait">${on?'Claude peut lire les lettres comme une phrase : chaque lettre est un mot, et la suite des lettres dit ce qu\'est la chose que le mot nomme.':'Hors ligne : les idées de chaque lettre restent là. Pour la conclusion, il faut internet.'}</p>
     ${on?`<div class="act">${navigator.share?'<button class="primary" id="s-share">Demander à Claude</button><button class="ghost" id="s-copy">Copier la demande</button>':'<button class="primary" id="s-copy">Copier la demande</button><a class="ghost" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>'}</div><p class="status" id="synth-st"></p>`:''}`;
   if(!on) return;
   const st=$('#synth-st');
@@ -858,7 +862,7 @@ async function synthMaterial(){
 function synthPrompt(material,forJson){
   const elems=[], seen=new Set();
   CURRENT.elems.forEach(e=>{ if(seen.has(e.id)) return; seen.add(e.id); elems.push(`- ${e.name} : ${e.court}${e.fiche?' — '+e.fiche.phrase:''}`); });
-  const concl=$('.rbeq')?($('.rbeq').textContent.replace('=','').trim()+' : '+($('.vtext')?$('.vtext').textContent:'')):'';
+  const concl=$('.phr')?($('.phr').textContent.replace(/\s+/g,' ').trim()+' — '+($('.vtext')?$('.vtext').textContent:'')):'';
   const base=`Mot étudié :
 ${CURRENT.raw.trim()}
 
@@ -866,12 +870,12 @@ ${CURRENT.raw.trim()}
 ${structure()}
 Idée de chaque élément :
 ${elems.join('\n')}
-${concl?'Concept déjà déchiffré par le rébus des lettres : '+concl+'\n':''}
+${concl?'Phrase des lettres déjà lue (chaque mot est précédé de sa lettre) : '+concl+'\n':''}
 2. Ce mot dans les textes (le mot cherché est entre « » ; chaque passage a un numéro entre crochets) :
 
 ${material}
 
-Tâche : selon le Rav Kook, un mot se lit comme un rébus : chaque lettre est l'image d'un concept, et leur association dans l'ordre forme le concept que le mot nomme. Mets ce concept au centre, et écris UNE seule explication de ce mot qui unit toutes ces approches en montrant comment chacune éclaire, confirme ou nuance ce concept, et comment il rejoint le sens réel du mot : les lettres selon le Rav Kook, le sens du mot dans le תנ״ך, le ספר יצירה et le commentaire du גר״א, le midrash אותיות דרבי עקיבא, le זהר, le שערי אורה, les enseignements de רבי נחמן et de רבי נתן, et le commentaire de Hirsch (qui rapproche les racines aux sons proches). Montre ce qui les relie : une même idée vue sous plusieurs angles. Ne garde que ce qui s'appuie sur les passages donnés ; quand une source n'a rien, n'invente rien pour elle. Aucune image ni comparaison qui ne vient pas des textes. Sépare clairement ce que disent les textes de ton interprétation.
+Tâche : selon le Rav Kook, un mot se lit comme une phrase : chaque lettre est comme un mot, et la suite des lettres, dans l'ordre, dit ce qu'est la chose que le mot nomme. Mets cette phrase des lettres au centre, et écris UNE seule explication de ce mot qui unit toutes ces approches en montrant comment chacune éclaire, confirme ou nuance cette phrase, et comment elle rejoint le sens réel du mot : les lettres selon le Rav Kook, le sens du mot dans le תנ״ך, le ספר יצירה et le commentaire du גר״א, le midrash אותיות דרבי עקיבא, le זהר, le שערי אורה, les enseignements de רבי נחמן et de רבי נתן, et le commentaire de Hirsch (qui rapproche les racines aux sons proches). Montre ce qui les relie : une même idée vue sous plusieurs angles. Ne garde que ce qui s'appuie sur les passages donnés ; quand une source n'a rien, n'invente rien pour elle. Aucune image ni comparaison qui ne vient pas des textes. Sépare clairement ce que disent les textes de ton interprétation.
 Sources : chaque fois que tu t'appuies sur un passage, nomme précisément le livre et l'endroit (par exemple : le midrash אותיות דרבי עקיבא, נוסח א, à la lettre ח) et mets juste après le numéro du passage entre crochets, par exemple [3]. N'utilise que les numéros donnés plus haut. Ne dis jamais « un livre ancien » sans dire lequel.
 Mots hébreux : quand tu parles d'un mot, écris-le en lettres hébraïques et dis ce qu'il veut dire ; si tu dis qu'un mot ressemble à un autre, écris les deux. Jamais de translittération en lettres latines.
 Écris en français très simple, pour n'importe qui : phrases courtes, mots de tous les jours, aucun mot savant.`;
