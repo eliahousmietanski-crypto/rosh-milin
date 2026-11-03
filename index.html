@@ -165,6 +165,16 @@ table.ov tr.letter-row:first-child td{border-top:0}
 .texts{margin-top:14px;border-top:1px solid var(--line);padding-top:4px}
 .srcs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;direction:rtl}
 .hit .de{display:block;line-height:1.6;font-size:.95rem}
+button.mam{background:transparent;border:1px solid var(--line);border-radius:999px;padding:1px 8px;font:600 .72rem var(--ui);color:var(--muted);vertical-align:middle;white-space:nowrap;direction:ltr}
+button.mam[aria-expanded="true"]{border-color:var(--gold);color:var(--gold)}
+.hit button.mam{margin-top:6px}
+.mam-out{margin:4px 0 12px;padding:10px;border-radius:12px;background:var(--card);border:1px dashed var(--line);display:grid;gap:8px;text-align:start;direction:ltr;font:400 .9rem/1.5 var(--ui)}
+.mam-out p{margin:0}
+.mam-out .act{display:flex;gap:8px}.mam-out .act button{border-radius:10px;padding:7px 12px;font-weight:600}
+.mam-grid{display:flex;flex-wrap:wrap;gap:8px 10px}
+.mu{display:inline-flex;flex-direction:column;align-items:center;max-width:9em}
+.muh{font-size:1.1rem;line-height:1.3}
+.muf{font:500 .72rem/1.25 var(--ui);color:var(--muted);direction:ltr;text-align:center}
 .synth-all{margin-top:18px;border-top:1px solid var(--line);padding-top:4px;display:grid;gap:10px}
 .synth-all>p{margin:0}
 .synth-all .act{display:flex;flex-wrap:wrap;gap:8px}
@@ -408,7 +418,7 @@ const plainHeb=s=>s.normalize('NFD').replace(/[֑-ׇ]/g,'').replace(/[״׳"']/g,
 /* ---------- rendu des fiches ---------- */
 function pagesLabel(p){ if(!p||!p.length) return ''; const a=p[0],b=p[p.length-1]; return a===b?`page ${a}`:`pages ${a}–${b}`; }
 function textBlock(sec,label){
-  const paras=sec.t.split('\n').filter(Boolean).map(x=>`<p>${esc(x)}</p>`).join('');
+  const paras=sec.t.split('\n').filter(Boolean).map(x=>`<p>${esc(x)} ${mamBtn(x)}</p>`).join('');
   return `${paras}<span class="src">${label}, ${pagesLabel(sec.p)} du livre</span>`;
 }
 function ficheHtml(e){
@@ -832,7 +842,7 @@ function drawBody(){
   h+=`<p class="status">${FILTERS[st.f][0]} : ${FILTERS[st.f][1]}</p>`;
   const books=sum[st.f].books;
   if(Object.keys(books).length>1) h+=`<div class="tk-books" dir="rtl">${Object.keys(books).map(b=>`<span><b>${esc(b)}</b> ${books[b]}</span>`).join('')}</div>`;
-  h+=`<div class="hits">`+st.items.map(r=>`<div class="hit">${r.link?`<a class="ref" href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.book)} ${esc(r.ref)} ↗</a>`:`<span class="ref">${esc(r.book)} ${esc(r.ref)}</span>`}<span class="${S.ltr?'de':'he'}" lang="${S.ltr?'de':'he'}">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span></div>`).join('')+`</div>`;
+  h+=`<div class="hits">`+st.items.map(r=>`<div class="hit">${r.link?`<a class="ref" href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.book)} ${esc(r.ref)} ↗</a>`:`<span class="ref">${esc(r.book)} ${esc(r.ref)}</span>`}<span class="${S.ltr?'de':'he'}" lang="${S.ltr?'de':'he'}">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span>${S.ltr?'':mamBtn(r.pre+r.mark+r.post)}</div>`).join('')+`</div>`;
   const left=sum[st.f].n-st.items.length;
   if(st.loading) h+=`<p class="status">Chargement…</p>`;
   else if(st.pageErr) h+=`<div class="act"><button class="ghost" data-more>Impossible de charger les passages. Réessayer</button></div>`;
@@ -954,10 +964,73 @@ function bookHits(words){
     const a=Math.max(0,h.i-70), b=Math.min(h.txt.length,h.i+h.len+70);
     const pre=(a>0?'…':'')+esc(h.txt.slice(a,h.i)), mid=esc(h.txt.slice(h.i,h.i+h.len)), post=esc(h.txt.slice(h.i+h.len,b))+(b<h.txt.length?'…':'');
     const ttl=h.sec.title.replace(/[״"#]/g,'').trim();
-    return `<div class="hit"><span class="ref">${esc(ttl)}</span><span class="he">${pre}<mark>${mid}</mark>${post}</span><button data-page="${h.sec.pdf[0]}">Voir la page ${h.sec.pdf[0]-2}</button></div>`;
+    return `<div class="hit"><span class="ref">${esc(ttl)}</span><span class="he">${pre}<mark>${mid}</mark>${post}</span><button data-page="${h.sec.pdf[0]}">Voir la page ${h.sec.pdf[0]-2}</button> ${mamBtn(h.txt.slice(a,b))}</div>`;
   }).join('')+'</div>';
   return {n:res.length,snips,html};
 }
+
+/* ---------- traduction mot à mot ---------- */
+// Chaque texte hébreu reçoit un bouton « mot à mot » : Claude traduit chaque mot dans son sens dans la phrase,
+// et le résultat s'affiche sous le texte, chaque mot hébreu avec sa traduction en dessous.
+const MAMT=[];
+function mamBtn(text){ MAMT.push(String(text).replace(/^…|…$/g,'').trim()); return `<button class="mam" data-mam="${MAMT.length-1}">mot à mot</button>`; }
+const MAM_CHUNK=120;
+function mamPrompt(context,words,forJson){
+  return `Traduis mot à mot, en français, ce passage en hébreu (ou en araméen).
+
+Le passage entier, pour le sens :
+${context}
+
+${forJson?`Voici ses mots numérotés (préfixes et ponctuation compris). Pour chaque numéro, donne la traduction de ce mot dans le sens qu'il a dans cette phrase, d'un à quatre mots français, préfixes compris (par exemple ובבית : « et dans la maison »). Développe les abréviations (par exemple ז״ל : « que sa mémoire soit bénie »). Les noms propres restent des noms propres. Pas de commentaire.
+
+${words.map((w,i)=>`${i+1}. ${w}`).join('\n')}
+
+Réponds uniquement avec un tableau JSON de ${words.length} chaînes, une par numéro, dans l'ordre.`:`Fais un tableau à deux colonnes : chaque mot hébreu, dans l'ordre du texte, et sa traduction dans le sens qu'il a dans la phrase (préfixes compris, abréviations développées). Puis donne la traduction de tout le passage en français simple.`}`;
+}
+function mamKey(t){ let h=0; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))|0; return 'rm-mam:'+h; }
+function mamGrid(words,gloss){
+  return `<div class="mam-grid" dir="rtl">${words.map((w,i)=>`<span class="mu"><span class="he muh">${esc(w)}</span><span class="muf">${gloss[i]!=null?rich(gloss[i]):'…'}</span></span>`).join('')}</div>`;
+}
+async function mamRun(text,out){
+  const words=text.split(/\s+/).filter(Boolean);
+  let gloss=[]; try{ gloss=JSON.parse(localStorage.getItem(mamKey(text))||'[]'); }catch(e){}
+  const sample=await getSample();
+  // n : nombre de mots affichés (les mots pas encore traduits portent « … »)
+  const draw=(msg,n=gloss.length)=>{ out.innerHTML=mamGrid(words.slice(0,n),gloss)+(msg||'')+`<p class="vnote">Traduction mot à mot faite par Claude : vérifie toujours avec le texte.</p>`; };
+  if(gloss.length>=words.length){ draw(''); return; }
+  if(!sample){
+    out.innerHTML=`<p class="status">${navigator.onLine?'La traduction mot à mot se fait avec Claude, dans l\'application ouverte sur claude.ai. Ici, tu peux copier la demande et la coller dans une conversation avec Claude.':'Hors ligne : la traduction mot à mot demande une connexion.'}</p>${navigator.onLine?'<div class="act"><button class="ghost" data-mamcopy>Copier la demande</button></div><p class="status" data-mamst></p>':''}`;
+    const c=out.querySelector('[data-mamcopy]'); if(c) c.onclick=async()=>{ try{ await navigator.clipboard.writeText(mamPrompt(text,words,false)); out.querySelector('[data-mamst]').textContent='Demande copiée.'; }catch(e){ out.querySelector('[data-mamst]').textContent='La copie a été refusée.'; } };
+    return;
+  }
+  // traduit morceau par morceau : le début s'affiche vite, la suite se demande d'un appui
+  const next=async()=>{
+    const from=gloss.length, part=words.slice(from,from+MAM_CHUNK);
+    draw('<p class="vwait">Traduction en cours…</p>',from+part.length);
+    try{
+      let r=await sample.json(mamPrompt(text,part,true));
+      if(!Array.isArray(r)) r=Object.values(r||{}).find(Array.isArray)||[];
+      for(let i=0;i<part.length;i++) gloss.push(r[i]!=null?String(r[i]):'?');
+      try{ localStorage.setItem(mamKey(text),JSON.stringify(gloss)); }catch(e){}
+    }catch(e){
+      if(e&&e.code==='cancelled') return;
+      draw(`<p class="vwait">${e&&e.code==='rate_limited'?'Trop de demandes pour le moment.':'La traduction n\'a pas pu être obtenue.'}</p><div class="act"><button class="ghost" data-mamnext>Réessayer</button></div>`);
+      out.querySelector('[data-mamnext]').onclick=next; return;
+    }
+    const left=words.length-gloss.length;
+    draw(left>0?`<div class="act"><button class="ghost" data-mamnext>Traduire la suite (${left} mots)</button></div>`:'');
+    const b=out.querySelector('[data-mamnext]'); if(b) b.onclick=next;
+  };
+  next();
+}
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('button.mam'); if(!b) return;
+  const host=b.closest('p, .hit')||b;
+  let out=host.nextElementSibling;
+  if(out&&out.classList.contains('mam-out')){ out.hidden=!out.hidden; b.setAttribute('aria-expanded',!out.hidden); return; }
+  out=document.createElement('div'); out.className='mam-out'; host.after(out); b.setAttribute('aria-expanded','true');
+  mamRun(MAMT[+b.dataset.mam],out);
+});
 
 /* ---------- palettes ---------- */
 function buildPalettes(){
