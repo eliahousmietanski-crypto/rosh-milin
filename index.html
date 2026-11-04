@@ -250,6 +250,21 @@ details.more[open]>summary{margin-bottom:10px}
 .build p{margin:2px 0 0}
 .bfin{font-weight:700;margin:12px 0 0}
 .vsens{margin:0;font-weight:600}
+.step[data-li]{cursor:pointer;border:2px solid transparent}
+.step[aria-pressed="true"]{border-color:var(--gold);background:var(--card)}
+.rtabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:14px -4px 0;padding:8px 4px;background:var(--paper)}
+.rtabs button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 4px;font-size:.85rem;font-weight:700;color:var(--muted)}
+.rtabs button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.rt-panel{margin-top:6px}
+#letter-panel{display:grid;gap:10px}
+.lp-head{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+.lp-g{font-size:2.6rem;line-height:1;color:var(--gold)}
+.lp-t{display:grid;flex:1;min-width:0}.lp-t b{font-size:1.3rem;text-align:left}.lp-t small{color:var(--muted)}
+.lp-nav{display:flex;gap:6px}.lp-nav button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:transparent;font-size:1.3rem;line-height:1}
+.lp-nav button:disabled{opacity:.3}
+.lp-claude{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:6px}
+.lp-claude p{margin:0}
+.lp-label{margin:0;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700}
 .vver{font-weight:400;color:var(--muted)}
 .rebus{display:flex;flex-wrap:nowrap;align-items:stretch;justify-content:center;gap:4px;overflow-x:auto;padding-bottom:2px}
 .rb{flex:1 1 0;display:grid;justify-items:center;align-content:start;gap:2px;background:var(--k-letter-soft);border-radius:12px;padding:6px 4px;min-width:58px;max-width:120px;text-align:center}
@@ -280,7 +295,7 @@ details.more[open]>summary{margin-bottom:10px}
 .nopt .ns{font-size:.85rem}
 .nopt .ng{font-size:.75rem;color:var(--muted)}
 .nopt .nf{font-size:.85rem;color:var(--muted)}
-.nbtn{border:1px solid var(--line)!important;border-radius:10px;padding:8px 12px;font-weight:600;background:transparent}
+.nbtn{border:0!important;padding:2px 0;font-size:.85rem;font-weight:600;background:transparent;color:var(--muted);text-decoration:underline}
 .nakdan .act{display:flex;gap:8px;margin-top:6px}
 .nakdan .act button{border-radius:10px;padding:8px 12px;font-weight:600}
 /* parcourir */
@@ -496,16 +511,16 @@ function renderWord(raw,isExample){
   // 1. conclusion
   html+=`<section class="nakdan" id="nakdan"></section>`;
   html+=`<section class="concl">${isExample?'<p class="example">Exemple</p>':''}`;
+  let li=0;
   words.forEach(w=>{
     html+=`<div class="word-head"><span class="he" lang="he">${esc(w.full)}</span></div>`;
-    html+=`<ol class="steps">`+stepsFor(w).map(st=>`<li class="step"><span class="g he">${esc(st.g)}</span><span class="c">${esc(st.c)}</span>${st.sub.map(x=>`<span class="sc"><i class="kdot k-${x.k}"></i>${esc(x.c)}</span>`).join('')}</li>`).join('')+`</ol>`;
+    html+=`<ol class="steps">`+stepsFor(w).map(st=>`<li class="step" role="button" tabindex="0" data-li="${li++}"><span class="g he">${esc(st.g)}</span><span class="c">${esc(st.c)}</span>${st.sub.map(x=>`<span class="sc"><i class="kdot k-${x.k}"></i>${esc(x.c)}</span>`).join('')}</li>`).join('')+`</ol>`;
   });
   html+=`<div class="verdict" id="verdict"></div></section>`;
   if(named&&words.length===1) html+=`<div class="notice">Ce mot est aussi le nom d'un élément traité dans le livre. <button data-open="${esc(named.id)}">Ouvrir sa fiche</button><span class="he">${esc(named.name)}</span></div>`;
-  // 2. développer
-  let cards='';
+  // 2. le détail de chaque lettre (fiches du livre), montré une lettre à la fois
+  const letterCards=[];
   words.forEach((w,wi)=>{
-    if(words.length>1) cards+=`<p class="wsep he">${esc(w.full)}</p>`;
     w.items.forEach((it,i)=>{
       const L=E[it.base]; elems.push(L);
       let g=`<div class="group">`+card(L,{pos:ordinal(i+1),glyph:it.base});
@@ -521,19 +536,51 @@ function renderWord(raw,isExample){
         g+=card(T,{sub:true,pos:'sur cette lettre',glyph:'◌'+mk,extraNote:note}); });
       if(it.dagesh) g+=`<p class="note" style="margin-inline-start:18px">Point intérieur dans cette lettre : le livre en parle dans la fiche de la dernière lettre de l'alphabet. <button class="back" style="margin:0;text-decoration:underline" data-open="ת">Ouvrir la fiche</button></p>`;
       if(it.tag){ const G=E['תג-'+it.base]; elems.push(G); g+=card(G,{sub:true,pos:'dans le rouleau de la Torah',glyph:it.base,extraNote:'Dans le rouleau de la Torah, cette lettre est écrite avec trois couronnes.'}); }
-      g+='</div>'; cards+=g;
+      if(i===w.items.length-1) w.extra.forEach(id=>{ const T=E[id]; elems.push(T); g+=card(T,{sub:true,pos:'à la fin du mot',glyph:id==='פסיק'?'׀':'׃'}); });
+      g+='</div>'; letterCards.push(g);
     });
-    w.extra.forEach(id=>{ const T=E[id]; elems.push(T); cards+=card(T,{pos:'à la fin du mot',glyph:id==='פסיק'?'׀':'׃'}); });
   });
-  html+=`<details class="more"><summary>En savoir plus sur chaque lettre</summary><div class="cards">${cards}</div></details>`;
-  html+=`<section class="assemble" id="assemble"></section>`;
-  html+=`<section class="texts" id="texts"></section>`;
-  html+=`<section class="synth-all" id="synth-all"></section>`;
+  // 3. trois onglets : un seul contenu à la fois
+  let rt='letters'; try{ rt=localStorage.getItem('rm-rt')||rt; }catch(e){}
+  html+=`<nav class="rtabs" role="tablist">
+    <button role="tab" data-rt="letters" aria-selected="${rt==='letters'}">Lettre par lettre</button>
+    <button role="tab" data-rt="texts" aria-selected="${rt==='texts'}">Dans les textes</button>
+    <button role="tab" data-rt="synth" aria-selected="${rt==='synth'}">Synthèse</button></nav>`;
+  html+=`<section class="rt-panel" id="rt-letters"${rt==='letters'?'':' hidden'}><div id="letter-panel"></div></section>`;
+  html+=`<section class="rt-panel texts" id="texts"${rt==='texts'?'':' hidden'}></section>`;
+  html+=`<section class="rt-panel synth-all" id="synth-all"${rt==='synth'?'':' hidden'}></section>`;
   out.innerHTML=html;
-  CURRENT={raw,words,elems};
+  CURRENT={raw,words,elems,letterCards,asm:null,sel:0};
+  out.querySelectorAll('[data-rt]').forEach(b=>b.onclick=()=>showRt(b.dataset.rt));
+  out.querySelectorAll('.step[data-li]').forEach(t=>{ const go=()=>{ CURRENT.sel=+t.dataset.li; showRt('letters'); drawLetterPanel(); $('#rt-letters').scrollIntoView({behavior:'smooth',block:'start'}); };
+    t.onclick=go; t.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } }; });
+  drawLetterPanel();
   renderVerdict(); renderTexts(words); renderNakdan(words);
 }
 let CURRENT=null;
+function showRt(id){
+  try{ localStorage.setItem('rm-rt',id); }catch(e){}
+  document.querySelectorAll('[data-rt]').forEach(b=>b.setAttribute('aria-selected',b.dataset.rt===id));
+  ['letters','texts','synth'].forEach(x=>{ const el=$(x==='letters'?'#rt-letters':x==='texts'?'#texts':'#synth-all'); if(el) el.hidden=x!==id; });
+}
+// le panneau de la lettre choisie : ce que Claude en a tiré, la fiche du livre, les autres livres
+function drawLetterPanel(){
+  const box=$('#letter-panel'); if(!box||!CURRENT) return;
+  const k=CURRENT.sel, items=CURRENT.words.flatMap(w=>w.items), it=items[k];
+  document.querySelectorAll('.step[data-li]').forEach(t=>t.setAttribute('aria-pressed',+t.dataset.li===k));
+  if(!it){ box.innerHTML=''; return; }
+  const asm=CURRENT.asm&&CURRENT.asm[k];
+  box.innerHTML=`<div class="lp-head"><span class="he lp-g">${esc(it.ch+it.nikMarks.join('')+it.taamMarks.join(''))}</span>
+      <span class="lp-t"><b class="he">${esc(letterName(it))}</b><small>${esc(ordinal(k+1))} sur ${items.length} · ${esc(E[it.base].court)}</small></span>
+      <span class="lp-nav"><button data-lpm="-1" aria-label="Lettre précédente" ${k?'':'disabled'}>‹</button><button data-lpm="1" aria-label="Lettre suivante" ${k<items.length-1?'':'disabled'}>›</button></span></div>
+    ${asm||(CURRENT.asm===null?'':'')}
+    <p class="lp-label">Ce que dit le <bdi dir="rtl" class="he">ראש מילין</bdi></p>
+    <div class="cards">${CURRENT.letterCards[k]}</div>
+    ${letterPassages(it.base,otherBooks())}`;
+  // la fiche de la lettre est ouverte d'emblée ; les voyelles et signes restent repliés
+  const first=box.querySelector('.cards .card'); if(first){ first.classList.add('open'); const tg=first.querySelector('.tog'); if(tg){ tg.textContent='−'; tg.setAttribute('aria-expanded','true'); } }
+  box.querySelectorAll('[data-lpm]').forEach(b=>b.onclick=()=>{ CURRENT.sel=Math.max(0,Math.min(items.length-1,k+(+b.dataset.lpm))); drawLetterPanel(); });
+}
 
 
 /* ---------- nakdan ---------- */
@@ -568,7 +615,7 @@ async function renderNakdan(words){
   if(words.length!==1){ box.innerHTML=''; return; }
   const w=words[0]; const plain=w.plain; const auto=!hasNikud(w);
   const head=auto?'Ce mot n\'a pas de voyelles. Il peut se lire de plusieurs façons :':'D\'autres façons de lire ces lettres :';
-  if(!auto){ box.innerHTML=`<button class="ghost nbtn" id="n-go">Voir toutes les façons de lire ces lettres</button>`; $('#n-go').onclick=()=>runNakdan(box,plain,head); return; }
+  if(!auto){ box.innerHTML=`<button class="ghost nbtn" id="n-go">Autres façons de lire ces lettres</button>`; $('#n-go').onclick=()=>runNakdan(box,plain,head); return; }
   runNakdan(box,plain,head);
 }
 async function runNakdan(box,plain,head){
@@ -700,8 +747,7 @@ function letterBookFr(e,cite){
     for(let i=0;i<he.length;i++) if(n&&fr[i]&&normCite(he[i]).includes(n))
       return `<details class="frd"><summary>Le passage du livre, en français</summary><p class="frt">${rich(fr[i])}</p></details>`;
   }
-  const F=e.fiche;
-  return F?`<details class="frd"><summary>Ce que dit le livre sur cette lettre (résumé)</summary><p class="frt">${esc(F.phrase)} ${F.points.map(p=>esc(p.t+' : '+p.x)).join(' ')}</p></details>`:'';
+  return '';
 }
 // passages des autres livres sur chaque lettre (letters.json, fait par source/build_letters.py)
 let LETTERS_IDX=null, LETTERS_P=null;
@@ -722,9 +768,10 @@ function otherBooks(){
 }
 // sous chaque lettre : TOUS les passages des autres livres trouvés pour elle (ceux envoyés à Claude portent leur numéro)
 function letterPassages(l,OB){
-  const all=(LETTERS_IDX&&LETTERS_IDX[l])||[]; if(!all.length) return '';
+  if(!LETTERS_IDX){ loadLetters().then(()=>{ if(LETTERS_IDX) drawLetterPanel(); }); return ''; }
+  const all=LETTERS_IDX[l]||[]; if(!all.length) return '';
   const num=new Map(OB.srcs.map((S,i)=>[S,i+1]));
-  return `<details class="frd"><summary>Ce que disent les autres livres sur cette lettre (${all.length})</summary><div class="hits">${all.map(S=>{ const n=num.get(S);
+  return `<details class="frd lp-others"><summary>Ce que disent les autres livres sur cette lettre (${all.length})</summary><div class="hits">${all.map(S=>{ const n=num.get(S);
     const body=S.full||S.text;
     return `<div class="hit"><a class="ref" href="${esc(S.link)}" target="_blank" rel="noopener">${n?'['+n+'] ':''}${esc(S.book)}, ${esc(S.ref)} ↗</a><span class="he" lang="he">${esc(S.text)}</span>${S.full?`<details class="frd"><summary>Lire tout le passage</summary><span class="he" lang="he" style="display:block">${esc(S.full)}</span></details>`:''}${mamBtn(body)}${trBtn(body,'he')}</div>`; }).join('')}</div></details>`;
 }
@@ -755,23 +802,22 @@ async function renderVerdict(){
       ${sens.length?`<p class="vsens">Sens du mot : ${sens.map(x=>rich(x)).join(' ; ')}</p>`:''}
       <p class="phr">${phrase}</p>
       <p class="vtext">${rich(r.lecture)}</p>
-      <p class="vnote">Lu par Claude à partir du livre. Le mot de chaque lettre, avec sa citation, est plus bas.</p>`;
-    const A=$('#assemble');
-    if(A&&ls.length){
-      A.innerHTML=`<h2 class="sec">Le mot de chaque lettre</h2><ol class="build">${ls.map((x,k)=>{
-        const it=items[k], e=it&&E[it.base], OB=otherBooks(), srcN=+x.source||0, osrc=srcN?OB.srcs[srcN-1]:null;
-        const ok=osrc?(x.citation&&normCite(osrc.text).includes(normCite(x.citation))&&normCite(x.citation).split(' ').length>1):(e&&citeOk(x.citation,e)), pdf=e&&(e.main||e.brk).pdf[0];
-        const others=it?(OB.byLetter[it.base]||[]):[];
-        return `<li><span class="he bw">${esc(x.lettre||(it?it.ch:''))}</span>
-          <p class="bimg">${it?`<bdi dir="rtl" class="he">${esc(letterName(it))}</bdi>${x.image?' : '+rich(x.image):''} <span class="barrow">→</span> `:''}${rich(x.mot)}</p>
-          ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>${x.citation_fr?`<p class="bcfr">« ${rich(x.citation_fr)} »</p>`:''}`:''}
-          <p class="bsrc">Source : ${osrc?`<a href="${esc(osrc.link)}" target="_blank" rel="noopener"><bdi dir="rtl" class="he">${esc(osrc.book)}, ${esc(osrc.ref)}</bdi> ↗</a>`:'<bdi dir="rtl" class="he">ראש מילין</bdi>'}</p>
-          ${x.autres?`<p class="bautres"><b>Les autres livres :</b> ${rich(x.autres,OB.srcs)}</p>`:''}
-          ${e?letterBookFr(e,(!osrc&&ok)?x.citation:''):''}
-          ${it?letterPassages(it.base,OB):''}
-          ${pdf?`<button class="bpage" data-page="${pdf}">Voir la page du livre</button>`:''}</li>`; }).join('')}</ol>
-        <p class="vnote">Les mots des lettres viennent du ראש מילין et des autres livres ; les citations sont vérifiées : une citation introuvable dans sa source n'est pas affichée.</p>`;
-    }
+      <p class="vnote">Lu par Claude à partir des livres. Touche une lettre pour voir d'où vient son mot.</p>`;
+    // détail de chaque lettre, affiché quand on touche la lettre (onglet « Lettre par lettre »)
+    const OB=otherBooks();
+    CURRENT.asm=ls.map((x,k)=>{
+      const it=items[k], e=it&&E[it.base], srcN=+x.source||0, osrc=srcN?OB.srcs[srcN-1]:null;
+      const ok=osrc?(x.citation&&normCite(osrc.text).includes(normCite(x.citation))&&normCite(x.citation).split(' ').length>1):(e&&citeOk(x.citation,e));
+      return `<div class="lp-claude">
+        <p class="lp-label">Dans la phrase du mot</p>
+        <p class="bimg">${it?`<bdi dir="rtl" class="he">${esc(letterName(it))}</bdi>${x.image?' : '+rich(x.image):''} <span class="barrow">→</span> `:''}${rich(x.mot)}</p>
+        ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>${x.citation_fr?`<p class="bcfr">« ${rich(x.citation_fr)} »</p>`:''}`:''}
+        <p class="bsrc">Source : ${osrc?`<a href="${esc(osrc.link)}" target="_blank" rel="noopener"><bdi dir="rtl" class="he">${esc(osrc.book)}, ${esc(osrc.ref)}</bdi> ↗</a>`:'<bdi dir="rtl" class="he">ראש מילין</bdi>'}</p>
+        ${x.autres?`<p class="bautres"><b>Les autres livres :</b> ${rich(x.autres,OB.srcs)}</p>`:''}
+        ${e&&!osrc&&ok?letterBookFr(e,x.citation):''}
+      </div>`;
+    });
+    drawLetterPanel();
   }catch(e){
     if(e&&e.code==='cancelled') return;
     if(e&&['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed'].includes(e.code)){ renderShare(v); return; }
@@ -858,7 +904,7 @@ function runSearch(id){
 }
 function loadPage(id){
   const q=TXQ, st=TX.st[id]; if(st.loading) return; st.loading=true; drawBody();
-  SEARCH('page',{src:id,q,f:st.f,from:st.items.length,n:st.items.length?50:30})
+  SEARCH('page',{src:id,q,f:st.f,from:st.items.length,n:st.items.length?30:10})
     .then(items=>{ if(q!==TXQ) return; st.loading=false; st.items.push(...items); drawBody(); })
     .catch(e=>{ if(q!==TXQ) return; st.loading=false; st.pageErr=true; drawBody(); });
 }
@@ -871,7 +917,7 @@ function srcCount(id){
 }
 function drawTexts(){
   const box=$('#texts'); if(!box||!TX) return;
-  box.innerHTML=`<h2 class="sec">Ce mot dans les textes</h2>
+  box.innerHTML=`
     <div class="srcs" role="tablist">${SOURCES.map(x=>`<button role="tab" data-src="${x.id}" aria-selected="${TX.sel===x.id}"><span class="he">${x.he}</span><small>${srcCount(x.id)}</small></button>`).join('')}</div>
     <div class="src-body" id="src-body" role="tabpanel"></div>`;
   box.querySelectorAll('[data-src]').forEach(b=>b.onclick=()=>{ TX.sel=b.dataset.src; try{localStorage.setItem('rm-src',TX.sel);}catch(e){} drawTexts();
@@ -900,7 +946,7 @@ function drawBody(){
   let h=head+`<div class="tk-filters">${fs.map(f=>`<button data-f="${f}" aria-pressed="${st.f===f}">${FILTERS[f][0]} · ${sum[f].n}</button>`).join('')}</div>`;
   h+=`<p class="status">${FILTERS[st.f][0]} : ${FILTERS[st.f][1]}</p>`;
   const books=sum[st.f].books;
-  if(Object.keys(books).length>1) h+=`<div class="tk-books" dir="rtl">${Object.keys(books).map(b=>`<span><b>${esc(b)}</b> ${books[b]}</span>`).join('')}</div>`;
+  if(Object.keys(books).length>1) h+=`<details class="frd tk-bd"><summary>Par livre (${Object.keys(books).length})</summary><div class="tk-books" dir="rtl">${Object.keys(books).map(b=>`<span><b>${esc(b)}</b> ${books[b]}</span>`).join('')}</div></details>`;
   h+=`<div class="hits">`+st.items.map(r=>`<div class="hit">${r.link?`<a class="ref" href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.book)} ${esc(r.ref)} ↗</a>`:`<span class="ref">${esc(r.book)} ${esc(r.ref)}</span>`}<span class="${S.ltr?'de':'he'}" lang="${S.ltr?'de':'he'}">${esc(r.pre)}<mark>${esc(r.mark)}</mark>${esc(r.post)}</span>${r.fr?`<span class="frt">${esc(r.fr)}</span>`:''}${S.ltr?'':mamBtn(r.pre+r.mark+r.post)}${r.fr?'':trBtn(r.pre+r.mark+r.post,S.ltr?'de':'he')}</div>`).join('')+`</div>`;
   const left=sum[st.f].n-st.items.length;
   if(st.loading) h+=`<p class="status">Chargement…</p>`;
@@ -917,7 +963,7 @@ function drawBody(){
 let SACTL=null;
 function renderSynthAll(){
   const box=$('#synth-all'); if(!box) return;
-  box.innerHTML=`<h2 class="sec">Synthèse de toutes les explications</h2>
+  box.innerHTML=`
     <p class="status">Claude réunit en une seule explication ce que disent les lettres selon le Rav Kook et les passages où ce mot apparaît dans les textes ci-dessus. Les textes pas encore téléchargés ne sont pas pris en compte.</p>
     <div class="act"><button class="primary" id="sa-go">Faire la synthèse</button></div>`;
   $('#sa-go').onclick=()=>runSynthAll(box);
@@ -971,7 +1017,7 @@ async function runSynthAll(box){
   box.querySelector('.act').innerHTML='<p class="vwait">Rassemblement des passages…</p>';
   const {text:material,srcs}=await synthMaterial(); if(!box.isConnected) return;
   const sample=await getSample(); if(!box.isConnected) return;
-  const head='<h2 class="sec">Synthèse de toutes les explications</h2>';
+  const head='';
   if(!sample){
     const on=navigator.onLine;
     box.innerHTML=head+`<p class="status">${on?'Ici, la synthèse se fait dans une conversation avec Claude : copie la demande et colle-la.':'Hors ligne : la synthèse demande une connexion.'}</p>${on?`<div class="act">${navigator.share?'<button class="primary" id="sa-share">Demander à Claude</button>':''}<button class="${navigator.share?'ghost':'primary'}" id="sa-copy">Copier la demande</button>${navigator.share?'':'<a class="ghost" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>'}</div><p class="status" id="sa-st"></p>`:''}`;
