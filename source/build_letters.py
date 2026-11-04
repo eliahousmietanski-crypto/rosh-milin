@@ -74,7 +74,7 @@ def main(d):
             if fname == 'otiyot_rabbi_akiva':
                 m = re.search(r'אות ([א-ת])', ref)
                 if m and m.group(1) in found:
-                    found[m.group(1)].append((99, ref, text[:900] + ('…' if len(text) > 900 else ''), refs[n]))
+                    found[m.group(1)].append((99, ref, text, refs[n]))   # texte entier : le midrash est rangé par lettre
                 continue
             for l in LETTERS:
                 ms = list(pats[l].finditer(plain))

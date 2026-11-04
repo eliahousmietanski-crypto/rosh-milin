@@ -716,7 +716,7 @@ function otherBooks(){
     const all=LETTERS_IDX[l]||[], pick=[], per={};
     for(const p of all){ const k=p.book; if((per[k]||0)>=(k==='אותיות דרבי עקיבא'?3:1)) continue; per[k]=(per[k]||0)+1; pick.push(p); if(pick.length>=8) break; }
     byLetter[l]=pick.map(p=>{ srcs.push(p); return srcs.length; });
-    parts.push(`## Lettre ${E[l].name}\n`+(pick.length?pick.map((p,i)=>`[${byLetter[l][i]}] ${p.book}, ${p.ref} : ${p.text}`).join('\n'):'Aucun passage trouvé.'));
+    parts.push(`## Lettre ${E[l].name}\n`+(pick.length?pick.map((p,i)=>`[${byLetter[l][i]}] ${p.book}, ${p.ref} : ${p.text.length>1500?p.text.slice(0,1500)+'…':p.text}`).join('\n'):'Aucun passage trouvé.'));   // pour Claude, les très longs passages sont raccourcis ; l'affichage les donne en entier
   });
   return CURRENT._ob={text:parts.join('\n\n'),srcs,byLetter};
 }
