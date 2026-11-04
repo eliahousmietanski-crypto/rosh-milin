@@ -256,12 +256,16 @@ details.more[open]>summary{margin-bottom:10px}
 .rtabs button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 4px;font-size:.85rem;font-weight:700;color:var(--muted)}
 .rtabs button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
 .rt-panel{margin-top:6px}
-#letter-panel{display:grid;gap:10px}
-.lp-head{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+#letter-panel{display:grid;gap:8px}
+.lp{background:var(--card);border:1px solid var(--line);border-radius:16px;scroll-margin-top:64px}
+.lp[open]{border-color:var(--gold)}
+.lp-head{display:flex;align-items:center;gap:12px;padding:10px 12px;cursor:pointer;list-style:none}
+.lp-head::-webkit-details-marker{display:none}
+.lp-arrow{color:var(--muted);font-size:1.1rem;transition:transform .2s}
+.lp[open] .lp-arrow{transform:rotate(180deg)}
+.lp-body{display:grid;gap:10px;padding:0 10px 12px}
 .lp-g{font-size:2.6rem;line-height:1;color:var(--gold)}
 .lp-t{display:grid;flex:1;min-width:0}.lp-t b{font-size:1.3rem;text-align:left}.lp-t small{color:var(--muted)}
-.lp-nav{display:flex;gap:6px}.lp-nav button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:transparent;font-size:1.3rem;line-height:1}
-.lp-nav button:disabled{opacity:.3}
 .lp-claude{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:grid;gap:6px}
 .lp-claude p{margin:0}
 .lp-label{margin:0;font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700}
@@ -552,7 +556,7 @@ function renderWord(raw,isExample){
   out.innerHTML=html;
   CURRENT={raw,words,elems,letterCards,asm:null,sel:0};
   out.querySelectorAll('[data-rt]').forEach(b=>b.onclick=()=>showRt(b.dataset.rt));
-  out.querySelectorAll('.step[data-li]').forEach(t=>{ const go=()=>{ CURRENT.sel=+t.dataset.li; showRt('letters'); drawLetterPanel(); $('#rt-letters').scrollIntoView({behavior:'smooth',block:'start'}); };
+  out.querySelectorAll('.step[data-li]').forEach(t=>{ const go=()=>{ CURRENT.sel=+t.dataset.li; showRt('letters'); drawLetterPanel(); const d=$(`details.lp[data-k="${CURRENT.sel}"]`); if(d){ d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'}); } };
     t.onclick=go; t.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } }; });
   drawLetterPanel();
   renderVerdict(); renderTexts(words); renderNakdan(words);
@@ -563,23 +567,33 @@ function showRt(id){
   document.querySelectorAll('[data-rt]').forEach(b=>b.setAttribute('aria-selected',b.dataset.rt===id));
   ['letters','texts','synth'].forEach(x=>{ const el=$(x==='letters'?'#rt-letters':x==='texts'?'#texts':'#synth-all'); if(el) el.hidden=x!==id; });
 }
-// le panneau de la lettre choisie : ce que Claude en a tiré, la fiche du livre, les autres livres
-function drawLetterPanel(){
-  const box=$('#letter-panel'); if(!box||!CURRENT) return;
-  const k=CURRENT.sel, items=CURRENT.words.flatMap(w=>w.items), it=items[k];
-  document.querySelectorAll('.step[data-li]').forEach(t=>t.setAttribute('aria-pressed',+t.dataset.li===k));
-  if(!it){ box.innerHTML=''; return; }
-  const asm=CURRENT.asm&&CURRENT.asm[k];
-  box.innerHTML=`<div class="lp-head"><span class="he lp-g">${esc(it.ch+it.nikMarks.join('')+it.taamMarks.join(''))}</span>
-      <span class="lp-t"><b class="he">${esc(letterName(it))}</b><small>${esc(ordinal(k+1))} sur ${items.length} · ${esc(E[it.base].court)}</small></span>
-      <span class="lp-nav"><button data-lpm="-1" aria-label="Lettre précédente" ${k?'':'disabled'}>‹</button><button data-lpm="1" aria-label="Lettre suivante" ${k<items.length-1?'':'disabled'}>›</button></span></div>
-    ${asm||(CURRENT.asm===null?'':'')}
+// un panneau à dérouler par lettre, dans l'ordre du mot : ce que Claude en a tiré, ce que dit le ראש מילין, les autres livres
+function letterBody(k){
+  const it=CURRENT.words.flatMap(w=>w.items)[k], asm=CURRENT.asm&&CURRENT.asm[k];
+  return `${asm||''}
     <p class="lp-label">Ce que dit le <bdi dir="rtl" class="he">ראש מילין</bdi></p>
     <div class="cards">${CURRENT.letterCards[k]}</div>
     ${letterPassages(it.base,otherBooks())}`;
-  // la fiche de la lettre est ouverte d'emblée ; les voyelles et signes restent repliés
-  const first=box.querySelector('.cards .card'); if(first){ first.classList.add('open'); const tg=first.querySelector('.tog'); if(tg){ tg.textContent='−'; tg.setAttribute('aria-expanded','true'); } }
-  box.querySelectorAll('[data-lpm]').forEach(b=>b.onclick=()=>{ CURRENT.sel=Math.max(0,Math.min(items.length-1,k+(+b.dataset.lpm))); drawLetterPanel(); });
+}
+function fillLetter(d){
+  const k=+d.dataset.k, body=d.querySelector('.lp-body');
+  body.innerHTML=letterBody(k);
+  const first=body.querySelector('.cards .card'); if(first){ first.classList.add('open'); const tg=first.querySelector('.tog'); if(tg){ tg.textContent='−'; tg.setAttribute('aria-expanded','true'); } }
+}
+function drawLetterPanel(){
+  const box=$('#letter-panel'); if(!box||!CURRENT) return;
+  const items=CURRENT.words.flatMap(w=>w.items), open=new Set([CURRENT.sel]);
+  box.querySelectorAll('details.lp[open]').forEach(d=>open.add(+d.dataset.k));   // garder ouverts ceux qu'on a ouverts
+  box.innerHTML=items.map((it,k)=>{ const x=CURRENT.asmWords&&CURRENT.asmWords[k];
+    return `<details class="lp" data-k="${k}"${open.has(k)?' open':''}><summary class="lp-head">
+      <span class="he lp-g">${esc(it.ch+it.nikMarks.join('')+it.taamMarks.join(''))}</span>
+      <span class="lp-t"><b class="he">${esc(letterName(it))}</b><small>${x?rich(x):esc(E[it.base].court)}</small></span>
+      <span class="lp-arrow" aria-hidden="true">▾</span></summary><div class="lp-body"></div></details>`; }).join('');
+  box.querySelectorAll('details.lp').forEach(d=>{
+    if(d.open) fillLetter(d);
+    d.addEventListener('toggle',()=>{ if(d.open&&!d.querySelector('.lp-body').innerHTML) fillLetter(d); });
+  });
+  document.querySelectorAll('.step[data-li]').forEach(t=>t.setAttribute('aria-pressed',open.has(+t.dataset.li)));
 }
 
 
@@ -805,6 +819,7 @@ async function renderVerdict(){
       <p class="vnote">Lu par Claude à partir des livres. Touche une lettre pour voir d'où vient son mot.</p>`;
     // détail de chaque lettre, affiché quand on touche la lettre (onglet « Lettre par lettre »)
     const OB=otherBooks();
+    CURRENT.asmWords=ls.map(x=>x.mot||'');
     CURRENT.asm=ls.map((x,k)=>{
       const it=items[k], e=it&&E[it.base], srcN=+x.source||0, osrc=srcN?OB.srcs[srcN-1]:null;
       const ok=osrc?(x.citation&&normCite(osrc.text).includes(normCite(x.citation))&&normCite(x.citation).split(' ').length>1):(e&&citeOk(x.citation,e));
