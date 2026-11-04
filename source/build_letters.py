@@ -74,16 +74,18 @@ def main(d):
             if fname == 'otiyot_rabbi_akiva':
                 m = re.search(r'אות ([א-ת])', ref)
                 if m and m.group(1) in found:
-                    found[m.group(1)].append((99, ref, text, refs[n]))   # texte entier : le midrash est rangé par lettre
+                    found[m.group(1)].append((99, ref, text, refs[n], text))   # texte entier : le midrash est rangé par lettre
                 continue
             for l in LETTERS:
                 ms = list(pats[l].finditer(plain))
                 if ms:
-                    found[l].append((len(ms), ref, excerpt(text, plain, ms[0]), refs[n]))
+                    found[l].append((len(ms), ref, excerpt(text, plain, ms[0]), refs[n], text))
         for l in LETTERS:
             # les passages qui parlent le plus de la lettre d'abord
-            for score, ref, text, link in sorted(found[l], key=lambda x: -x[0])[:cap]:
-                out[l].append({'src': src, 'book': he, 'ref': ref, 'text': text, 'link': link})
+            for score, ref, text, link, full in sorted(found[l], key=lambda x: -x[0])[:cap]:
+                e = {'src': src, 'book': he, 'ref': ref, 'text': text, 'link': link}
+                if full != text: e['full'] = full   # l'extrait est coupé : le paragraphe entier, pour « lire tout le passage »
+                out[l].append(e)
     json.dump(out, sys.stdout, ensure_ascii=False, separators=(',', ':'))
 
 
