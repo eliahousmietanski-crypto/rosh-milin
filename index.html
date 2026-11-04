@@ -720,6 +720,14 @@ function otherBooks(){
   });
   return CURRENT._ob={text:parts.join('\n\n'),srcs,byLetter};
 }
+// sous chaque lettre : TOUS les passages des autres livres trouvés pour elle (ceux envoyés à Claude portent leur numéro)
+function letterPassages(l,OB){
+  const all=(LETTERS_IDX&&LETTERS_IDX[l])||[]; if(!all.length) return '';
+  const num=new Map(OB.srcs.map((S,i)=>[S,i+1]));
+  return `<details class="frd"><summary>Ce que disent les autres livres sur cette lettre (${all.length})</summary><div class="hits">${all.map(S=>{ const n=num.get(S);
+    const body=S.full||S.text;
+    return `<div class="hit"><a class="ref" href="${esc(S.link)}" target="_blank" rel="noopener">${n?'['+n+'] ':''}${esc(S.book)}, ${esc(S.ref)} ↗</a><span class="he" lang="he">${esc(S.text)}</span>${S.full?`<details class="frd"><summary>Lire tout le passage</summary><span class="he" lang="he" style="display:block">${esc(S.full)}</span></details>`:''}${mamBtn(body)}${trBtn(body,'he')}</div>`; }).join('')}</div></details>`;
+}
 // garde une citation seulement si elle se trouve vraiment dans le passage du livre
 const normCite=t=>plainHeb(t).replace(/[^א-ת]+/g,' ').replace(/[ךםןףץ]/g,c=>({'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'}[c])).trim();
 function citeOk(c,e){ const n=normCite(c||''); if(n.split(' ').length<2) return false; return [e.main,e.brk].some(x=>x&&normCite(x.t).includes(n)); }
@@ -760,8 +768,7 @@ async function renderVerdict(){
           <p class="bsrc">Source : ${osrc?`<a href="${esc(osrc.link)}" target="_blank" rel="noopener"><bdi dir="rtl" class="he">${esc(osrc.book)}, ${esc(osrc.ref)}</bdi> ↗</a>`:'<bdi dir="rtl" class="he">ראש מילין</bdi>'}</p>
           ${x.autres?`<p class="bautres"><b>Les autres livres :</b> ${rich(x.autres,OB.srcs)}</p>`:''}
           ${e?letterBookFr(e,(!osrc&&ok)?x.citation:''):''}
-          ${others.length?`<details class="frd"><summary>Ce que disent les autres livres sur cette lettre (${others.length})</summary><div class="hits">${others.map(n=>{ const S=OB.srcs[n-1];
-            return `<div class="hit"><a class="ref" href="${esc(S.link)}" target="_blank" rel="noopener">[${n}] ${esc(S.book)}, ${esc(S.ref)} ↗</a><span class="he" lang="he">${esc(S.text)}</span>${mamBtn(S.text)}${trBtn(S.text,'he')}</div>`; }).join('')}</div></details>`:''}
+          ${it?letterPassages(it.base,OB):''}
           ${pdf?`<button class="bpage" data-page="${pdf}">Voir la page du livre</button>`:''}</li>`; }).join('')}</ol>
         <p class="vnote">Les mots des lettres viennent du ראש מילין et des autres livres ; les citations sont vérifiées : une citation introuvable dans sa source n'est pas affichée.</p>`;
     }
