@@ -24,6 +24,8 @@ Sur Android (Chrome) : ouvrir le lien, menu ⋮ → « Installer l'application �
 | `corpus/` | Le זהר (avec זהר חדש et תיקוני זהר), le ספר יצירה (version du גר״א) et le commentaire du גר״א, le שערי אורה, les livres de רבי נחמן et de רבי נתן, le commentaire de la Torah de Hirsch : un paragraphe par ligne |
 | `source/build_sefaria.py` | Fabrique `corpus/` depuis l'export public de Sefaria ; chaque `.refs` donne, ligne par ligne, la référence du passage pour le lien vers le texte original |
 | `source/build_wikisource.py` | Fabrique `corpus/otiyot_rabbi_akiva.txt` depuis Wikisource |
+| `letters.json` | Pour chaque lettre, les passages des autres livres qui en parlent (אותיות דרבי עקיבא, ספר יצירה, זהר, שערי אורה, Breslov) |
+| `source/build_letters.py` | Fabrique `letters.json` à partir de `corpus/` |
 
 Texte retranscrit depuis l'édition numérisée de hebrewbooks.org, avec les corrections de la page d'errata du livre. Les résumés en français sont une aide à la lecture et ne font pas partie du livre.
 

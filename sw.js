@@ -1,7 +1,7 @@
-const V='rosh-milin-v11';
+const V='rosh-milin-v12';
 const FONTS='https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Frank+Ruhl+Libre:wght@400;500;700;900&display=swap';
 const TEXTS='rosh-milin-texts'; // rempli par search.js, gardé d'une version à l'autre
-const CORE=['./','index.html','search.js','data.json','manifest.webmanifest','icon-192.png','icon-512.png'];
+const CORE=['./','index.html','search.js','data.json','letters.json','manifest.webmanifest','icon-192.png','icon-512.png'];
 const PAGES=[
   'pages/001.jpg',
   'pages/002.jpg',
