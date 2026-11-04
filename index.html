@@ -267,6 +267,7 @@ details.more[open]>summary{margin-bottom:10px}
 .bimg{font-weight:700}
 .build p{margin:4px 0 0}
 .bcite{font-size:1.05rem;color:var(--muted)}
+.bcfr{direction:ltr;font-size:.9rem;color:var(--muted);font-style:italic}
 .bpage{background:transparent;border:0;padding:0;margin-top:4px;text-decoration:underline;font-size:.8rem;color:var(--muted)}
 .nakdan:empty{display:none}
 .nakdan{margin-top:14px}
@@ -647,9 +648,9 @@ Pas de mots savants, pas de formule vague, pas d'image qui n'est ni dans le livr
   if(forJson) return base+`
 
 Réponds uniquement avec un objet JSON de cette forme :
-{"sens": ["..."], "lettres": [{"lettre": "...", "image": "...", "mot": "...", "citation": "..."}], "phrase": "...", "lecture": "..."}
+{"sens": ["..."], "lettres": [{"lettre": "...", "image": "...", "mot": "...", "citation": "...", "citation_fr": "..."}], "phrase": "...", "lecture": "..."}
 - "sens" : le ou les sens réels du mot, en français, quelques mots chacun.
-- "lettres" : une entrée par lettre, dans l'ordre (${letters}). "lettre" : la lettre telle qu'elle est écrite. "image" : ce que désigne le nom de la lettre, un à trois mots (pour information seulement). "mot" : l'idée de la lettre dite directement, celle qui entre dans la phrase ; jamais l'image. "citation" : quelques mots hébreux recopiés exactement des passages.
+- "lettres" : une entrée par lettre, dans l'ordre (${letters}). "lettre" : la lettre telle qu'elle est écrite. "image" : ce que désigne le nom de la lettre, un à trois mots (pour information seulement). "mot" : l'idée de la lettre dite directement, celle qui entre dans la phrase ; jamais l'image. "citation" : quelques mots hébreux recopiés exactement des passages (obligatoire pour chaque lettre). "citation_fr" : la traduction française de cette citation.
 - "phrase" : la phrase des lettres. Entoure le mot de chaque lettre ainsi : [1:mot de la 1re lettre], [2:mot de la 2e lettre]… dans l'ordre, et laisse les petits mots de liaison en dehors des crochets. Exemple de forme (pas de contenu) : « [1:...] qui [2:...] et [3:...]. »
 - "lecture" : une ou deux phrases.
 
@@ -680,6 +681,17 @@ function rich(t,srcs){
     else out+=`<bdi dir="rtl" class="he">${esc(m[0])}</bdi>`;
   }
   return out+esc(t.slice(last));
+}
+// sous chaque lettre : le paragraphe du livre (en français) d'où vient la citation, sinon le résumé de la lettre
+function letterBookFr(e,cite){
+  const n=cite?normCite(cite):'';
+  for(const sec of [e.main,e.brk]){ if(!sec||!sec.fr) continue;
+    const he=sec.t.split('\n'), fr=sec.fr.split('\n');
+    for(let i=0;i<he.length;i++) if(n&&fr[i]&&normCite(he[i]).includes(n))
+      return `<details class="frd"><summary>Le passage du livre, en français</summary><p class="frt">${rich(fr[i])}</p></details>`;
+  }
+  const F=e.fiche;
+  return F?`<details class="frd"><summary>Ce que dit le livre sur cette lettre (résumé)</summary><p class="frt">${esc(F.phrase)} ${F.points.map(p=>esc(p.t+' : '+p.x)).join(' ')}</p></details>`:'';
 }
 // garde une citation seulement si elle se trouve vraiment dans le passage du livre
 const normCite=t=>plainHeb(t).replace(/[^א-ת]+/g,' ').replace(/[ךםןףץ]/g,c=>({'ך':'כ','ם':'מ','ן':'נ','ף':'פ','ץ':'צ'}[c])).trim();
@@ -714,7 +726,8 @@ async function renderVerdict(){
         const it=items[k], e=it&&E[it.base], ok=e&&citeOk(x.citation,e), pdf=e&&(e.main||e.brk).pdf[0];
         return `<li><span class="he bw">${esc(x.lettre||(it?it.ch:''))}</span>
           <p class="bimg">${it?`<bdi dir="rtl" class="he">${esc(letterName(it))}</bdi>${x.image?' : '+rich(x.image):''} <span class="barrow">→</span> `:''}${rich(x.mot)}</p>
-          ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>`:''}
+          ${ok?`<p class="he bcite">« ${esc(x.citation)} »</p>${x.citation_fr?`<p class="bcfr">« ${rich(x.citation_fr)} »</p>`:''}`:''}
+          ${e?letterBookFr(e,ok?x.citation:''):''}
           ${pdf?`<button class="bpage" data-page="${pdf}">Voir la page du livre</button>`:''}</li>`; }).join('')}</ol>
         <p class="vnote">Les mots des lettres viennent du livre ; les citations sont vérifiées : une citation introuvable dans le livre n'est pas affichée.</p>`;
     }
